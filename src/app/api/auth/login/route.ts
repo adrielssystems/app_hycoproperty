@@ -3,6 +3,8 @@ import { query } from '@/lib/db';
 import { initAndSeedDatabase } from '@/lib/seed';
 import { verifyPassword, createSessionData, hashPassword } from '@/lib/auth';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: Request) {
   try {
     const { email, password } = await request.json();

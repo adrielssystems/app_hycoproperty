@@ -3,6 +3,8 @@ import { query } from '@/lib/db';
 import { hashPassword } from '@/lib/auth';
 import { cookies } from 'next/headers';
 
+export const dynamic = 'force-dynamic';
+
 // Helper to verify admin caller
 async function getAuthenticatedCaller() {
   const cookieStore = await cookies();

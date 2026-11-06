@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { initAndSeedDatabase } from '@/lib/seed';
 
+export const dynamic = 'force-dynamic';
+
 // Fallback data in case PostgreSQL container is starting up or disconnected
 const FALLBACK_PROPERTIES = [
   {

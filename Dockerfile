@@ -1,11 +1,11 @@
 # ==============================================================================
-#   HYCO Property Management - Production Dockerfile (Next.js 16 + pnpm)
+#   HYCO Property Management - Production Dockerfile (Next.js 16 + Node 22 + pnpm)
 # ==============================================================================
 
-FROM node:20-alpine AS base
+FROM node:22-alpine AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN npm install -g pnpm@11.17.0
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
@@ -27,7 +27,7 @@ ENV NODE_ENV=production
 RUN pnpm build
 
 # 3. Production runner
-FROM node:20-alpine AS runner
+FROM node:22-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
