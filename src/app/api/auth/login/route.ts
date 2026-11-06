@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { initAndSeedDatabase } from '@/lib/seed';
+import { verifyPassword, createSessionData } from '@/lib/auth';
 
 export async function POST(request: Request) {
   try {
@@ -26,7 +27,7 @@ export async function POST(request: Request) {
     let user: any = null;
     try {
       const users = await query(
-        'SELECT id, name, email, password_hash, role, avatar_url FROM users WHERE LOWER(email) = LOWER($1)',
+        'SELECT id, name, email, password_hash, role, avatar_url, allowed_sections FROM users WHERE LOWER(email) = LOWER($1)',
         [cleanEmail]
       );
       if (users && users.length > 0) {
@@ -36,7 +37,7 @@ export async function POST(request: Request) {
       console.warn('DB query in login failed, checking fallback credentials:', dbErr?.message || dbErr);
     }
 
-    // Fallback if DB is offline or user not yet in DB
+    // Fallback if DB is offline/unreachable
     if (!user) {
       if (cleanEmail === 'admin@hycoproperty.com') {
         user = {
@@ -45,6 +46,7 @@ export async function POST(request: Request) {
           email: 'admin@hycoproperty.com',
           password_hash: 'Hyc@pr0p3rty',
           role: 'ADMIN',
+          allowed_sections: 'overview,properties,tenants,billing,maintenance,settings',
           avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
         };
       } else if (cleanEmail === 'rhectoroc@gmail.com') {
@@ -54,6 +56,7 @@ export async function POST(request: Request) {
           email: 'rhectoroc@gmail.com',
           password_hash: 'hKZ5hJ47n6Pf',
           role: 'SUPER_ADMIN',
+          allowed_sections: 'overview,properties,tenants,billing,maintenance,settings',
           avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
         };
       }
@@ -66,10 +69,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // Check password
-    const isPasswordValid =
-      password === user.password_hash ||
-      (cleanEmail === 'admin@hycoproperty.com' && (password === 'Hyc@pr0p3rty' || password === 'password123'));
+    // Cryptographic Password Verification
+    const isPasswordValid = verifyPassword(password, user.password_hash);
 
     if (!isPasswordValid) {
       return NextResponse.json(
@@ -78,28 +79,22 @@ export async function POST(request: Request) {
       );
     }
 
-    // Build session user
-    const sessionUser = {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      avatar_url: user.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
-    };
+    // Build session with 2-hour sliding inactivity expiration
+    const sessionData = createSessionData(user);
 
     const response = NextResponse.json({
       success: true,
       message: 'Inicio de sesión exitoso',
-      user: sessionUser,
+      user: sessionData,
     });
 
-    // Set secure auth cookie
+    // 2 hours of inactivity session cookie (7200 seconds)
     response.cookies.set({
       name: 'hyco_session',
-      value: JSON.stringify(sessionUser),
+      value: JSON.stringify(sessionData),
       httpOnly: false,
       path: '/',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
+      maxAge: 7200, // 2 hours
       sameSite: 'lax',
     });
 

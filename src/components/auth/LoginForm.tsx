@@ -11,8 +11,8 @@ export const LoginForm: React.FC = () => {
   const router = useRouter();
   const { t } = useLanguage();
 
-  const [email, setEmail] = useState('admin@hycoproperty.com');
-  const [password, setPassword] = useState('Hyc@pr0p3rty');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');

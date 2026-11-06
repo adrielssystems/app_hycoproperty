@@ -8,6 +8,7 @@ import {
   Users,
   DollarSign,
   Wrench,
+  Settings,
   LogOut,
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
@@ -21,6 +22,7 @@ interface SidebarProps {
     email: string;
     role: string;
     avatar_url: string;
+    allowed_sections?: string[];
   } | null;
 }
 
@@ -30,15 +32,29 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenLogout,
   user,
 }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
-  const navItems = [
+  const isAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN';
+  const allowedSections = user?.allowed_sections || ['overview', 'properties', 'tenants', 'billing', 'maintenance'];
+
+  const baseNavItems = [
     { id: 'overview', label: t('navOverview'), icon: LayoutGrid },
     { id: 'properties', label: t('navProperties'), icon: Building2 },
     { id: 'tenants', label: t('navTenants'), icon: Users },
     { id: 'billing', label: t('navBilling'), icon: DollarSign },
     { id: 'maintenance', label: t('navMaintenance'), icon: Wrench },
   ];
+
+  // Filter sections based on permissions
+  const filteredNavItems = baseNavItems.filter((item) => {
+    if (user?.role === 'SUPER_ADMIN') return true;
+    return allowedSections.includes(item.id);
+  });
+
+  // Add settings tab for Admins / Super Admins
+  const navItems = isAdmin
+    ? [...filteredNavItems, { id: 'settings', label: language === 'en' ? 'Settings' : 'Ajustes', icon: Settings }]
+    : filteredNavItems;
 
   return (
     <>
@@ -86,15 +102,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Bottom Actions: User Avatar & Logout */}
         <div className="flex flex-col items-center gap-3">
           {user && (
-            <div className="relative group cursor-pointer">
+            <div className="relative group cursor-pointer" title={`${user.name} (${user.role})`}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={user.avatar_url}
+                src={user.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'}
                 alt={user.name}
                 className="w-9 h-9 rounded-xl object-cover border border-[#D4AF37]/40 shadow-sm"
               />
               <span className="absolute left-14 bottom-0 px-2.5 py-1 rounded-lg bg-[#070D18] border border-white/10 text-white text-[11px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 shadow-xl">
-                {user.name}
+                {user.name} ({user.role})
               </span>
             </div>
           )}
@@ -122,7 +138,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               key={item.id}
               onClick={() => onTabChange(item.id)}
-              className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all relative ${
+              className={`flex flex-col items-center justify-center py-1 px-1.5 rounded-xl transition-all relative ${
                 isActive
                   ? 'text-[#F3D270] font-bold'
                   : 'text-white/50 hover:text-white'
@@ -135,9 +151,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     : 'bg-transparent text-white/50'
                 }`}
               >
-                <Icon size={18} strokeWidth={isActive ? 2.5 : 2} />
+                <Icon size={17} strokeWidth={isActive ? 2.5 : 2} />
               </div>
-              <span className="text-[10px] mt-0.5 tracking-tight font-medium max-w-[58px] truncate">
+              <span className="text-[9px] mt-0.5 tracking-tight font-medium max-w-[50px] truncate">
                 {item.label}
               </span>
               {isActive && (
@@ -154,11 +170,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Mobile Logout Quick Trigger */}
         <button
           onClick={onOpenLogout}
-          className="flex flex-col items-center justify-center py-1 px-1.5 text-rose-400/60 hover:text-rose-400 transition-colors"
+          className="flex flex-col items-center justify-center py-1 px-1 text-rose-400/60 hover:text-rose-400 transition-colors"
           title={t('logoutConfirmTitle')}
         >
           <div className="p-1.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400">
-            <LogOut size={16} />
+            <LogOut size={15} />
           </div>
           <span className="text-[9px] mt-0.5 font-medium text-rose-400/80">Salir</span>
         </button>

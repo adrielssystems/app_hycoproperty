@@ -16,6 +16,7 @@ import {
   TenantsView,
   BillingView,
   MaintenanceView,
+  SettingsView,
 } from '@/components';
 
 export default function DashboardPage() {
@@ -39,10 +40,12 @@ export default function DashboardPage() {
 
   // User session
   const [user, setUser] = useState<{
+    id?: number;
     name: string;
     email: string;
     role: string;
     avatar_url: string;
+    allowed_sections?: string[];
   } | null>(null);
 
   // Dashboard Data State
@@ -73,6 +76,11 @@ export default function DashboardPage() {
       const authData = await authRes.json();
       if (authData.authenticated && authData.user) {
         setUser(authData.user);
+        // Enforce RBAC tab restriction: if current tab is not allowed, switch to first allowed
+        const allowed: string[] = authData.user.allowed_sections || ['overview'];
+        if (authData.user.role !== 'SUPER_ADMIN' && !allowed.includes(currentTab)) {
+          setCurrentTab(allowed[0] || 'overview');
+        }
       } else {
         router.push('/login');
         return;
@@ -237,6 +245,10 @@ export default function DashboardPage() {
               searchQuery={searchQuery}
               onRefresh={loadDashboardData}
             />
+          )}
+
+          {currentTab === 'settings' && (
+            <SettingsView />
           )}
         </main>
       </div>

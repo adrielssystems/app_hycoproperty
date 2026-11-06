@@ -3,4 +3,5 @@ export * from './PropertiesView';
 export * from './TenantsView';
 export * from './BillingView';
 export * from './MaintenanceView';
+export * from './SettingsView';
 

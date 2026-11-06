@@ -11,6 +11,7 @@ import {
   Wrench,
   FileSpreadsheet,
   LayoutGrid,
+  Settings,
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
@@ -393,6 +394,24 @@ export const Header: React.FC<HeaderProps> = ({
                 className="w-full pl-9 pr-3 py-1.5 rounded-xl glass-input text-xs text-white placeholder-white/30"
               />
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Settings Toolbar */}
+      {currentTab === 'settings' && (
+        <div className="flex items-center justify-between gap-4 w-full">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            {renderLogo()}
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <Settings size={17} className="text-[#F3D270]" />
+              <span className="font-bold text-xs sm:text-base text-white tracking-tight whitespace-nowrap">
+                {language === 'en' ? 'Settings & Staff Permissions' : 'Ajustes y Permisos de Usuarios'}
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {renderRightUtilities()}
           </div>
         </div>
       )}

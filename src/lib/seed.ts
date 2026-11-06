@@ -1,4 +1,5 @@
 import { getDbPool } from './db';
+import { hashPassword } from './auth';
 import fs from 'fs';
 import path from 'path';
 
@@ -10,26 +11,37 @@ export async function initAndSeedDatabase() {
   // Execute schema
   await pool.query(schemaSql);
 
+  // Ensure allowed_sections column exists for RBAC
+  try {
+    await pool.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS allowed_sections TEXT DEFAULT 'overview,properties,tenants,billing,maintenance';
+    `);
+  } catch (colErr) {
+    console.warn('Column check warning:', colErr);
+  }
+
   // Check if users exist
   const existingUsers = await pool.query('SELECT COUNT(*) FROM users');
   if (parseInt(existingUsers.rows[0].count) === 0) {
-    // Insert super admin and admin users
+    // Insert super admin and admin users with securely hashed passwords
     await pool.query(
-      `INSERT INTO users (name, email, password_hash, role, avatar_url)
+      `INSERT INTO users (name, email, password_hash, role, avatar_url, allowed_sections)
        VALUES 
-       ($1, $2, $3, $4, $5),
-       ($6, $7, $8, $9, $10)`,
+       ($1, $2, $3, $4, $5, $6),
+       ($7, $8, $9, $10, $11, $12)`,
       [
         'Héctor O. - Super Administrador',
         'rhectoroc@gmail.com',
-        'hKZ5hJ47n6Pf',
+        hashPassword('hKZ5hJ47n6Pf'),
         'SUPER_ADMIN',
         'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+        'overview,properties,tenants,billing,maintenance,settings',
         'Adriel H. - Director de Operaciones',
         'admin@hycoproperty.com',
-        'Hyc@pr0p3rty',
+        hashPassword('Hyc@pr0p3rty'),
         'ADMIN',
-        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'
+        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+        'overview,properties,tenants,billing,maintenance,settings',
       ]
     );
 
@@ -142,20 +154,27 @@ export async function initAndSeedDatabase() {
     }
   }
 
-  // Ensure admin@hycoproperty.com exists with password Hyc@pr0p3rty
+  // Ensure admin@hycoproperty.com exists with securely hashed password
   try {
-    await pool.query(`
-      INSERT INTO users (name, email, password_hash, role, avatar_url)
-      VALUES (
+    const hashedAdminPass = hashPassword('Hyc@pr0p3rty');
+    await pool.query(
+      `INSERT INTO users (name, email, password_hash, role, avatar_url, allowed_sections)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT (email) 
+       DO UPDATE SET 
+         password_hash = EXCLUDED.password_hash,
+         name = EXCLUDED.name,
+         role = EXCLUDED.role,
+         allowed_sections = COALESCE(users.allowed_sections, EXCLUDED.allowed_sections);`,
+      [
         'Adriel H. - Director de Operaciones',
         'admin@hycoproperty.com',
-        'Hyc@pr0p3rty',
+        hashedAdminPass,
         'ADMIN',
-        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'
-      )
-      ON CONFLICT (email) 
-      DO UPDATE SET password_hash = 'Hyc@pr0p3rty', name = 'Adriel H. - Director de Operaciones', role = 'ADMIN';
-    `);
+        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+        'overview,properties,tenants,billing,maintenance,settings',
+      ]
+    );
   } catch (uErr) {
     console.warn('User admin sync warning:', uErr);
   }
