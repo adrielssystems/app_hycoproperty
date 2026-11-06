@@ -144,11 +144,6 @@ export const PropertiesView: React.FC<PropertiesViewProps> = ({
             <h3 className="text-base font-bold text-white tracking-tight">
               {language === 'en' ? 'Live Suites Directory & Lease Status' : 'Directorio de Suites y Disponibilidad'}
             </h3>
-            <p className="text-xs text-white/50">
-              {language === 'en'
-                ? 'Zero Double-Entry: Real-time synchronization between CRM, Public Web, and Tenant PWA.'
-                : 'Cero Doble Carga: Sincronización en tiempo real entre CRM, Web Pública y App de Inquilinos.'}
-            </p>
           </div>
 
           <div className="flex items-center gap-2">
