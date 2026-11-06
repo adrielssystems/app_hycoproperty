@@ -5,6 +5,36 @@ import { rateLimit } from '@/lib/rateLimit';
 export function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
+  // Check session freshness
+  let isAuthenticated = false;
+  const sessionCookie = request.cookies.get('hyco_session');
+  if (sessionCookie?.value) {
+    try {
+      const session = JSON.parse(sessionCookie.value);
+      if (session && session.expires_at && Date.now() < session.expires_at) {
+        isAuthenticated = true;
+      }
+    } catch {
+      isAuthenticated = false;
+    }
+  }
+
+  // 1. Server-side redirect for unauthenticated users visiting the protected root '/' (Zero-Flash)
+  if (pathname === '/') {
+    if (!isAuthenticated) {
+      const loginUrl = new URL('/login', request.url);
+      return NextResponse.redirect(loginUrl);
+    }
+  }
+
+  // 2. Redirect already authenticated users visiting '/login' straight to dashboard '/'
+  if (pathname === '/login') {
+    if (isAuthenticated) {
+      const homeUrl = new URL('/', request.url);
+      return NextResponse.redirect(homeUrl);
+    }
+  }
+
   // Only apply rate limiting to /api/* routes
   if (pathname.startsWith('/api')) {
     // Determine client IP for identification
