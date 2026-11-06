@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 
-export const dynamic = 'force-dynamic';
-
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const properties = await query(`
       SELECT id, name, type, address, total_units, available_units, occupancy_rate, image_url, video_url, created_at
