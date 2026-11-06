@@ -99,22 +99,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
           })}
         </nav>
 
-        {/* Bottom Actions: User Avatar & Logout */}
-        <div className="flex flex-col items-center gap-3">
-          {user && (
-            <div className="relative group cursor-pointer" title={`${user.name} (${user.role})`}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={user.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'}
-                alt={user.name}
-                className="w-9 h-9 rounded-xl object-cover border border-[#D4AF37]/40 shadow-sm"
-              />
-              <span className="absolute left-14 bottom-0 px-2.5 py-1 rounded-lg bg-[#070D18] border border-white/10 text-white text-[11px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 shadow-xl">
-                {user.name} ({user.role})
-              </span>
-            </div>
-          )}
-
+        {/* Bottom Actions: Logout */}
+        <div className="flex flex-col items-center">
           <button
             onClick={onOpenLogout}
             className="w-10 h-10 rounded-xl flex items-center justify-center text-rose-400/70 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer group relative"
