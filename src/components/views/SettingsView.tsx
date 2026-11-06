@@ -3,14 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import {
   Users,
-  Shield,
   Key,
   Plus,
   Trash2,
   Pencil,
   CheckCircle2,
-  Lock,
-  Clock,
   LayoutGrid,
   Building2,
   DollarSign,
@@ -44,7 +41,6 @@ export const SettingsView: React.FC = () => {
   const { language } = useLanguage();
   const [users, setUsers] = useState<UserItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeSubTab, setActiveSubTab] = useState<'users' | 'security'>('users');
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -172,36 +168,8 @@ export const SettingsView: React.FC = () => {
 
   return (
     <div className="space-y-6 w-full">
-      {/* Sub-menu Tabs */}
-      <div className="flex items-center gap-2 border-b border-white/[0.08] pb-3">
-        <button
-          onClick={() => setActiveSubTab('users')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            activeSubTab === 'users'
-              ? 'bg-[#D4AF37]/15 text-[#F3D270] border border-[#D4AF37]/30 shadow-md'
-              : 'text-white/60 hover:text-white hover:bg-white/[0.04]'
-          }`}
-        >
-          <Users size={15} />
-          <span>{language === 'en' ? 'User Management & Permissions' : 'Usuarios y Permisos de Menú'}</span>
-        </button>
-
-        <button
-          onClick={() => setActiveSubTab('security')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            activeSubTab === 'security'
-              ? 'bg-[#D4AF37]/15 text-[#F3D270] border border-[#D4AF37]/30 shadow-md'
-              : 'text-white/60 hover:text-white hover:bg-white/[0.04]'
-          }`}
-        >
-          <Shield size={15} />
-          <span>{language === 'en' ? 'Security & Inactivity Policy' : 'Seguridad y Políticas de Sesión'}</span>
-        </button>
-      </div>
-
-      {/* USER MANAGEMENT TAB */}
-      {activeSubTab === 'users' && (
-        <div className="space-y-4">
+      {/* USER MANAGEMENT */}
+      <div className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h2 className="text-base font-bold text-white tracking-tight">
@@ -366,42 +334,6 @@ export const SettingsView: React.FC = () => {
             )}
           </div>
         </div>
-      )}
-
-      {/* SECURITY TAB */}
-      {activeSubTab === 'security' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="glass-card rounded-2xl p-6 border border-white/[0.08] space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
-                <Clock size={20} />
-              </div>
-              <div>
-                <h3 className="font-bold text-white text-sm">Vencimiento de Sesión por Inactividad</h3>
-                <p className="text-xs text-emerald-400 font-semibold">2 Horas Activas (Sliding Window)</p>
-              </div>
-            </div>
-            <p className="text-xs text-white/60 leading-relaxed">
-              Toda sesión inactiva por más de 120 minutos es destruida automáticamente en el servidor y navegador para evitar accesos no autorizados en terminales desatendidas.
-            </p>
-          </div>
-
-          <div className="glass-card rounded-2xl p-6 border border-white/[0.08] space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-[#D4AF37]/10 border border-[#D4AF37]/20 text-[#F3D270]">
-                <Key size={20} />
-              </div>
-              <div>
-                <h3 className="font-bold text-white text-sm">Criptografía y Blindaje de Claves</h3>
-                <p className="text-xs text-[#F3D270] font-semibold">Scrypt Salted Hashes (Node.js Crypto)</p>
-              </div>
-            </div>
-            <p className="text-xs text-white/60 leading-relaxed">
-              Cero almacenamiento de contraseñas en texto plano. Cada clave se hashea con sales criptográficas únicas de 16 bytes y comparación de tiempo constante contra ataques de temporización.
-            </p>
-          </div>
-        </div>
-      )}
 
       {/* NEW / EDIT USER MODAL */}
       <Modal
