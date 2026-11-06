@@ -96,3 +96,4 @@ export function refreshSessionExpiration(session: SessionUser): SessionUser {
     expires_at: now + INACTIVITY_TIMEOUT_MS,
   };
 }
+

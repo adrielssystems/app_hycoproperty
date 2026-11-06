@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { initAndSeedDatabase } from '@/lib/seed';
-import { verifyPassword, createSessionData } from '@/lib/auth';
+import { verifyPassword, createSessionData, hashPassword } from '@/lib/auth';
 
 export async function POST(request: Request) {
   try {
@@ -37,24 +37,27 @@ export async function POST(request: Request) {
       console.warn('DB query in login failed, checking fallback credentials:', dbErr?.message || dbErr);
     }
 
-    // Fallback if DB is offline/unreachable
+    // Fallback emergency admin ONLY if defined in environment variables and DB query failed
     if (!user) {
-      if (cleanEmail === 'admin@hycoproperty.com') {
+      const adminEmail = (process.env.ADMIN_EMAIL || 'admin@hycoproperty.com').trim().toLowerCase();
+      const superAdminEmail = (process.env.SUPERADMIN_EMAIL || 'rhectoroc@gmail.com').trim().toLowerCase();
+
+      if (process.env.ADMIN_PASSWORD && cleanEmail === adminEmail) {
         user = {
           id: 2,
           name: 'Adriel H. - Director de Operaciones',
-          email: 'admin@hycoproperty.com',
-          password_hash: 'Hyc@pr0p3rty',
+          email: adminEmail,
+          password_hash: hashPassword(process.env.ADMIN_PASSWORD),
           role: 'ADMIN',
           allowed_sections: 'overview,properties,tenants,billing,maintenance,settings',
           avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
         };
-      } else if (cleanEmail === 'rhectoroc@gmail.com') {
+      } else if (process.env.SUPERADMIN_PASSWORD && cleanEmail === superAdminEmail) {
         user = {
           id: 1,
           name: 'Héctor O. - Super Administrador',
-          email: 'rhectoroc@gmail.com',
-          password_hash: 'hKZ5hJ47n6Pf',
+          email: superAdminEmail,
+          password_hash: hashPassword(process.env.SUPERADMIN_PASSWORD),
           role: 'SUPER_ADMIN',
           allowed_sections: 'overview,properties,tenants,billing,maintenance,settings',
           avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',

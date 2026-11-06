@@ -20,30 +20,49 @@ export async function initAndSeedDatabase() {
     console.warn('Column check warning:', colErr);
   }
 
-  // Check if users exist
+  // Check if initial users exist
   const existingUsers = await pool.query('SELECT COUNT(*) FROM users');
-  if (parseInt(existingUsers.rows[0].count) === 0) {
-    // Insert super admin and admin users with securely hashed passwords
-    await pool.query(
-      `INSERT INTO users (name, email, password_hash, role, avatar_url, allowed_sections)
-       VALUES 
-       ($1, $2, $3, $4, $5, $6),
-       ($7, $8, $9, $10, $11, $12)`,
-      [
-        'Héctor O. - Super Administrador',
-        'rhectoroc@gmail.com',
-        hashPassword('hKZ5hJ47n6Pf'),
-        'SUPER_ADMIN',
-        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
-        'overview,properties,tenants,billing,maintenance,settings',
-        'Adriel H. - Director de Operaciones',
-        'admin@hycoproperty.com',
-        hashPassword('Hyc@pr0p3rty'),
-        'ADMIN',
-        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
-        'overview,properties,tenants,billing,maintenance,settings',
-      ]
-    );
+  const userCount = parseInt(existingUsers.rows[0].count);
+
+  const adminEmail = (process.env.ADMIN_EMAIL || 'admin@hycoproperty.com').trim().toLowerCase();
+  const adminPassword = process.env.ADMIN_PASSWORD;
+
+  const superAdminEmail = (process.env.SUPERADMIN_EMAIL || 'rhectoroc@gmail.com').trim().toLowerCase();
+  const superAdminPassword = process.env.SUPERADMIN_PASSWORD;
+
+  if (userCount === 0) {
+    // Insert initial users only if secure passwords are provided via environment variables
+    if (superAdminPassword) {
+      await pool.query(
+        `INSERT INTO users (name, email, password_hash, role, avatar_url, allowed_sections)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         ON CONFLICT (email) DO NOTHING`,
+        [
+          'Héctor O. - Super Administrador',
+          superAdminEmail,
+          hashPassword(superAdminPassword),
+          'SUPER_ADMIN',
+          'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+          'overview,properties,tenants,billing,maintenance,settings',
+        ]
+      );
+    }
+
+    if (adminPassword) {
+      await pool.query(
+        `INSERT INTO users (name, email, password_hash, role, avatar_url, allowed_sections)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         ON CONFLICT (email) DO NOTHING`,
+        [
+          'Adriel H. - Director de Operaciones',
+          adminEmail,
+          hashPassword(adminPassword),
+          'ADMIN',
+          'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+          'overview,properties,tenants,billing,maintenance,settings',
+        ]
+      );
+    }
 
     // Insert sample properties for Indianapolis Portfolio
     await pool.query(`
@@ -154,28 +173,56 @@ export async function initAndSeedDatabase() {
     }
   }
 
-  // Ensure admin@hycoproperty.com exists with securely hashed password
-  try {
-    const hashedAdminPass = hashPassword('Hyc@pr0p3rty');
-    await pool.query(
-      `INSERT INTO users (name, email, password_hash, role, avatar_url, allowed_sections)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       ON CONFLICT (email) 
-       DO UPDATE SET 
-         password_hash = EXCLUDED.password_hash,
-         name = EXCLUDED.name,
-         role = EXCLUDED.role,
-         allowed_sections = COALESCE(users.allowed_sections, EXCLUDED.allowed_sections);`,
-      [
-        'Adriel H. - Director de Operaciones',
-        'admin@hycoproperty.com',
-        hashedAdminPass,
-        'ADMIN',
-        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
-        'overview,properties,tenants,billing,maintenance,settings',
-      ]
-    );
-  } catch (uErr) {
-    console.warn('User admin sync warning:', uErr);
+  // Ensure admin accounts are synced if environment variables are configured
+  if (adminPassword) {
+    try {
+      const hashedAdminPass = hashPassword(adminPassword);
+      await pool.query(
+        `INSERT INTO users (name, email, password_hash, role, avatar_url, allowed_sections)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         ON CONFLICT (email) 
+         DO UPDATE SET 
+           password_hash = EXCLUDED.password_hash,
+           name = EXCLUDED.name,
+           role = EXCLUDED.role,
+           allowed_sections = COALESCE(users.allowed_sections, EXCLUDED.allowed_sections);`,
+        [
+          'Adriel H. - Director de Operaciones',
+          adminEmail,
+          hashedAdminPass,
+          'ADMIN',
+          'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+          'overview,properties,tenants,billing,maintenance,settings',
+        ]
+      );
+    } catch (uErr) {
+      console.warn('User admin sync warning:', uErr);
+    }
+  }
+
+  if (superAdminPassword) {
+    try {
+      const hashedSuperPass = hashPassword(superAdminPassword);
+      await pool.query(
+        `INSERT INTO users (name, email, password_hash, role, avatar_url, allowed_sections)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         ON CONFLICT (email) 
+         DO UPDATE SET 
+           password_hash = EXCLUDED.password_hash,
+           name = EXCLUDED.name,
+           role = EXCLUDED.role,
+           allowed_sections = COALESCE(users.allowed_sections, EXCLUDED.allowed_sections);`,
+        [
+          'Héctor O. - Super Administrador',
+          superAdminEmail,
+          hashedSuperPass,
+          'SUPER_ADMIN',
+          'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+          'overview,properties,tenants,billing,maintenance,settings',
+        ]
+      );
+    } catch (sErr) {
+      console.warn('User superadmin sync warning:', sErr);
+    }
   }
 }

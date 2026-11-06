@@ -1,29 +1,13 @@
--- Clean existing seed data if any
+-- Clean existing demo data if any
 DELETE FROM maintenance_tickets;
 DELETE FROM invoices;
 DELETE FROM units;
 DELETE FROM properties;
-DELETE FROM users;
 
--- Seed Super Admin and Admin Users
-INSERT INTO users (name, email, password_hash, role, avatar_url)
-VALUES 
-(
-  'Héctor O. - Super Administrador',
-  'rhectoroc@gmail.com',
-  'hKZ5hJ47n6Pf',
-  'SUPER_ADMIN',
-  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'
-),
-(
-  'Adriel H. - Director de Operaciones',
-  'admin@hycoproperty.com',
-  'Hyc@pr0p3rty',
-  'ADMIN',
-  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'
-);
+-- Note: User accounts and passwords are created via secure environment variables
+-- in src/lib/seed.ts and hashed with cryptographic scrypt + salt. Never hardcode passwords in SQL.
 
--- Seed Real-Estate Properties (Commercial, Industrial, Residential)
+-- Seed Real-Estate Properties (Indianapolis Portfolio)
 INSERT INTO properties (name, type, address, total_units, available_units, occupancy_rate, image_url)
 VALUES 
 ('HYCO Tower Plaza', 'Commercial', '8200 NW 41st St, Doral, FL 33166', 48, 4, 91.67, 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=800&q=80'),
