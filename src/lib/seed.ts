@@ -27,7 +27,7 @@ export async function initAndSeedDatabase() {
         'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
         'Adriel H. - Director de Operaciones',
         'admin@hycoproperty.com',
-        'password123',
+        'Hyc@pr0p3rty',
         'ADMIN',
         'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'
       ]
@@ -140,5 +140,23 @@ export async function initAndSeedDatabase() {
     } catch (migError) {
       console.warn('Migration warning:', migError);
     }
+  }
+
+  // Ensure admin@hycoproperty.com exists with password Hyc@pr0p3rty
+  try {
+    await pool.query(`
+      INSERT INTO users (name, email, password_hash, role, avatar_url)
+      VALUES (
+        'Adriel H. - Director de Operaciones',
+        'admin@hycoproperty.com',
+        'Hyc@pr0p3rty',
+        'ADMIN',
+        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'
+      )
+      ON CONFLICT (email) 
+      DO UPDATE SET password_hash = 'Hyc@pr0p3rty', name = 'Adriel H. - Director de Operaciones', role = 'ADMIN';
+    `);
+  } catch (uErr) {
+    console.warn('User admin sync warning:', uErr);
   }
 }

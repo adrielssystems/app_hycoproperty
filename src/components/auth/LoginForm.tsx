@@ -11,8 +11,8 @@ export const LoginForm: React.FC = () => {
   const router = useRouter();
   const { t } = useLanguage();
 
-  const [email, setEmail] = useState('rhectoroc@gmail.com');
-  const [password, setPassword] = useState('hKZ5hJ47n6Pf');
+  const [email, setEmail] = useState('admin@hycoproperty.com');
+  const [password, setPassword] = useState('Hyc@pr0p3rty');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -59,7 +59,7 @@ export const LoginForm: React.FC = () => {
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="rhectoroc@gmail.com"
+          placeholder="admin@hycoproperty.com"
           leftIcon={<Mail size={16} />}
         />
 

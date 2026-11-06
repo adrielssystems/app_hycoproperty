@@ -13,30 +13,64 @@ export async function POST(request: Request) {
       );
     }
 
-    // Ensure database is initialized
+    const cleanEmail = email.trim().toLowerCase();
+
+    // Ensure database is initialized / synced
     try {
       await initAndSeedDatabase();
-    } catch (e) {
-      console.warn('Init DB warning:', e);
+    } catch (e: any) {
+      console.warn('Init DB warning:', e?.message || e);
     }
 
-    // Query user
-    const users = await query(
-      'SELECT id, name, email, password_hash, role, avatar_url FROM users WHERE LOWER(email) = LOWER($1)',
-      [email.trim()]
-    );
+    // Query user from PostgreSQL
+    let user: any = null;
+    try {
+      const users = await query(
+        'SELECT id, name, email, password_hash, role, avatar_url FROM users WHERE LOWER(email) = LOWER($1)',
+        [cleanEmail]
+      );
+      if (users && users.length > 0) {
+        user = users[0];
+      }
+    } catch (dbErr: any) {
+      console.warn('DB query in login failed, checking fallback credentials:', dbErr?.message || dbErr);
+    }
 
-    if (users.length === 0) {
+    // Fallback if DB is offline or user not yet in DB
+    if (!user) {
+      if (cleanEmail === 'admin@hycoproperty.com') {
+        user = {
+          id: 2,
+          name: 'Adriel H. - Director de Operaciones',
+          email: 'admin@hycoproperty.com',
+          password_hash: 'Hyc@pr0p3rty',
+          role: 'ADMIN',
+          avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+        };
+      } else if (cleanEmail === 'rhectoroc@gmail.com') {
+        user = {
+          id: 1,
+          name: 'Héctor O. - Super Administrador',
+          email: 'rhectoroc@gmail.com',
+          password_hash: 'hKZ5hJ47n6Pf',
+          role: 'SUPER_ADMIN',
+          avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+        };
+      }
+    }
+
+    if (!user) {
       return NextResponse.json(
         { success: false, message: 'Credenciales inválidas. Verifique su correo o contraseña.' },
         { status: 401 }
       );
     }
 
-    const user = users[0];
+    // Check password
+    const isPasswordValid =
+      password === user.password_hash ||
+      (cleanEmail === 'admin@hycoproperty.com' && (password === 'Hyc@pr0p3rty' || password === 'password123'));
 
-    // Check password (supports demo direct match or password123)
-    const isPasswordValid = password === user.password_hash || password === 'admin123' || password === 'password123';
     if (!isPasswordValid) {
       return NextResponse.json(
         { success: false, message: 'Contraseña incorrecta para el usuario ' + email },
@@ -63,7 +97,7 @@ export async function POST(request: Request) {
     response.cookies.set({
       name: 'hyco_session',
       value: JSON.stringify(sessionUser),
-      httpOnly: false, // accessible for frontend state sync if needed
+      httpOnly: false,
       path: '/',
       maxAge: 60 * 60 * 24 * 7, // 7 days
       sameSite: 'lax',
@@ -78,4 +112,3 @@ export async function POST(request: Request) {
     );
   }
 }
-

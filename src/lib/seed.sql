@@ -18,7 +18,7 @@ VALUES
 (
   'Adriel H. - Director de Operaciones',
   'admin@hycoproperty.com',
-  'password123',
+  'Hyc@pr0p3rty',
   'ADMIN',
   'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'
 );
