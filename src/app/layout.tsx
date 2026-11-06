@@ -6,7 +6,14 @@ export const metadata: Metadata = {
   title: "HYCO Property Management | Admin & Operations CRM",
   description: "Centralized Real Estate Portfolio Management, Billing & Tenant Helpdesk",
   icons: {
-    icon: "/logosinfondopng.png",
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/icon.png', type: 'image/png', sizes: '512x512' },
+      { url: '/icon-192.png', type: 'image/png', sizes: '192x192' },
+    ],
+    apple: [
+      { url: '/apple-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
   },
 };
 
