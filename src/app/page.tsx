@@ -178,7 +178,7 @@ export default function DashboardPage() {
         />
 
         {/* SCROLLABLE MAIN CONTENT (Cards, Tables, and Lists scroll here) */}
-        <main className="flex-1 overflow-y-auto px-3 sm:px-6 lg:px-8 pl-3 md:pl-24 pt-3 sm:pt-5 pb-24 md:pb-6 scrollbar-thin">
+        <main className="flex-1 overflow-y-auto pl-4 md:pl-28 lg:pl-28 pr-4 sm:pr-6 lg:pr-8 pt-4 sm:pt-6 pb-24 md:pb-8 scrollbar-thin">
           {currentTab === 'overview' && (
             <OverviewView
               stats={stats}
