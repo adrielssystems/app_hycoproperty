@@ -89,10 +89,10 @@ export async function initAndSeedDatabase() {
     await pool.query(`
       INSERT INTO invoices (invoice_number, qbo_invoice_id, tenant_name, suite_reference, amount, due_date, status, paid_at)
       VALUES
-      ('INV-2026-0891', 'REC-10492', 'Circle City Tech Labs', 'Suite 200 (Zionsville Rd)', 3600.00, CURRENT_DATE - INTERVAL '3 days', 'PAID', CURRENT_TIMESTAMP - INTERVAL '2 days'),
-      ('INV-2026-0892', 'REC-10493', 'Midwest Logistics Partners', 'Warehouse Bay 4-A (Park 100)', 8500.00, CURRENT_DATE + INTERVAL '5 days', 'PENDING', NULL),
-      ('INV-2026-0893', 'REC-10494', 'Hoosier Supply Chain Corp', 'Flex Bay 12-B (Morris St)', 4400.00, CURRENT_DATE - INTERVAL '1 day', 'PAID', CURRENT_TIMESTAMP - INTERVAL '1 day'),
-      ('INV-2026-0894', 'REC-10495', 'Meridian Wellness Center', 'Suite 310 (Meridian North)', 2850.00, CURRENT_DATE - INTERVAL '10 days', 'OVERDUE', NULL)
+      ('INV-2027-0891', 'REC-10492', 'Circle City Tech Labs', 'Suite 200 (Zionsville Rd)', 3600.00, CURRENT_DATE - INTERVAL '3 days', 'PAID', CURRENT_TIMESTAMP - INTERVAL '2 days'),
+      ('INV-2027-0892', 'REC-10493', 'Midwest Logistics Partners', 'Warehouse Bay 4-A (Park 100)', 8500.00, CURRENT_DATE + INTERVAL '5 days', 'PENDING', NULL),
+      ('INV-2027-0893', 'REC-10494', 'Hoosier Supply Chain Corp', 'Flex Bay 12-B (Morris St)', 4400.00, CURRENT_DATE - INTERVAL '1 day', 'PAID', CURRENT_TIMESTAMP - INTERVAL '1 day'),
+      ('INV-2027-0894', 'REC-10495', 'Meridian Wellness Center', 'Suite 310 (Meridian North)', 2850.00, CURRENT_DATE - INTERVAL '10 days', 'OVERDUE', NULL)
     `);
 
     // Insert sample tickets

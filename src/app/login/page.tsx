@@ -46,7 +46,7 @@ export default function LoginPage() {
 
         {/* Minimal Footer */}
         <div className="text-center mt-6 text-xs text-white/40">
-          <p>© 2026 HYCO Property Management</p>
+          <p>© 2027 HYCO Property Management</p>
         </div>
       </motion.div>
     </div>

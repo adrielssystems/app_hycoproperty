@@ -59,10 +59,10 @@ const FALLBACK_UNITS = [
 ];
 
 const FALLBACK_INVOICES = [
-  { id: 1, invoice_number: 'INV-2026-0891', qbo_invoice_id: 'REC-10492', tenant_name: 'Circle City Tech Labs', suite_reference: 'Suite 200 (Zionsville Rd)', amount: 3600.0, due_date: '2026-11-02', status: 'PAID' },
-  { id: 2, invoice_number: 'INV-2026-0892', qbo_invoice_id: 'REC-10493', tenant_name: 'Midwest Logistics Partners', suite_reference: 'Warehouse Bay 4-A (Park 100)', amount: 8500.0, due_date: '2026-11-10', status: 'PENDING' },
-  { id: 3, invoice_number: 'INV-2026-0893', qbo_invoice_id: 'REC-10494', tenant_name: 'Hoosier Supply Chain Corp', suite_reference: 'Flex Bay 12-B (Morris St)', amount: 4400.0, due_date: '2026-11-04', status: 'PAID' },
-  { id: 4, invoice_number: 'INV-2026-0894', qbo_invoice_id: 'REC-10495', tenant_name: 'Meridian Wellness Center', suite_reference: 'Suite 310 (Meridian North)', amount: 2850.0, due_date: '2026-10-26', status: 'OVERDUE' },
+  { id: 1, invoice_number: 'INV-2027-0891', qbo_invoice_id: 'REC-10492', tenant_name: 'Circle City Tech Labs', suite_reference: 'Suite 200 (Zionsville Rd)', amount: 3600.0, due_date: '2027-02-02', status: 'PAID' },
+  { id: 2, invoice_number: 'INV-2027-0892', qbo_invoice_id: 'REC-10493', tenant_name: 'Midwest Logistics Partners', suite_reference: 'Warehouse Bay 4-A (Park 100)', amount: 8500.0, due_date: '2027-02-10', status: 'PENDING' },
+  { id: 3, invoice_number: 'INV-2027-0893', qbo_invoice_id: 'REC-10494', tenant_name: 'Hoosier Supply Chain Corp', suite_reference: 'Flex Bay 12-B (Morris St)', amount: 4400.0, due_date: '2027-02-04', status: 'PAID' },
+  { id: 4, invoice_number: 'INV-2027-0894', qbo_invoice_id: 'REC-10495', tenant_name: 'Meridian Wellness Center', suite_reference: 'Suite 310 (Meridian North)', amount: 2850.0, due_date: '2027-01-26', status: 'OVERDUE' },
 ];
 
 const FALLBACK_TICKETS = [
@@ -75,8 +75,8 @@ const FALLBACK_TICKETS = [
 const FALLBACK_TENANTS = [
   { id: 1, name: 'Circle City Tech Labs', company: 'Circle City Tech Labs LLC', email: 'billing@circlecitytech.io', phone: '+1 (317) 555-0142', property_name: '7898 Zionsville Rd Commercial Center', suite_number: 'Suite 200', monthly_rent: 3600.0, lease_start: '2025-01-01', lease_end: '2027-12-31', qbo_customer_id: 'QBO-CUST-801', status: 'ACTIVE' },
   { id: 2, name: 'Midwest Logistics Partners', company: 'Midwest Logistics Partners Inc', email: 'ops@midwestlogistics.com', phone: '+1 (317) 555-0189', property_name: 'Park 100 Industrial Center', suite_number: 'Warehouse Bay 4-A', monthly_rent: 8500.0, lease_start: '2024-06-01', lease_end: '2028-05-31', qbo_customer_id: 'QBO-CUST-802', status: 'ACTIVE' },
-  { id: 3, name: 'Hoosier Supply Chain Corp', company: 'Hoosier Supply Chain Corp', email: 'admin@hoosiersupply.com', phone: '+1 (317) 555-0231', property_name: 'Morris Street Flex & Service Hub', suite_number: 'Flex Bay 12-B', monthly_rent: 4400.0, lease_start: '2025-03-01', lease_end: '2026-02-28', qbo_customer_id: 'QBO-CUST-803', status: 'ACTIVE' },
-  { id: 4, name: 'Meridian Wellness Center', company: 'Dr. Katherine Evans LLC', email: 'office@meridianwellness.com', phone: '+1 (317) 555-0310', property_name: 'Meridian North Executive Suites', suite_number: 'Suite 310', monthly_rent: 2850.0, lease_start: '2023-09-01', lease_end: '2026-08-31', qbo_customer_id: 'QBO-CUST-804', status: 'ACTIVE' },
+  { id: 3, name: 'Hoosier Supply Chain Corp', company: 'Hoosier Supply Chain Corp', email: 'admin@hoosiersupply.com', phone: '+1 (317) 555-0231', property_name: 'Morris Street Flex & Service Hub', suite_number: 'Flex Bay 12-B', monthly_rent: 4400.0, lease_start: '2025-03-01', lease_end: '2027-02-28', qbo_customer_id: 'QBO-CUST-803', status: 'ACTIVE' },
+  { id: 4, name: 'Meridian Wellness Center', company: 'Dr. Katherine Evans LLC', email: 'office@meridianwellness.com', phone: '+1 (317) 555-0310', property_name: 'Meridian North Executive Suites', suite_number: 'Suite 310', monthly_rent: 2850.0, lease_start: '2024-09-01', lease_end: '2027-08-31', qbo_customer_id: 'QBO-CUST-804', status: 'ACTIVE' },
 ];
 
 export async function GET() {

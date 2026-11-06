@@ -54,7 +54,7 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
         status: 'RESOLVED',
         assigned_technician: 'Mario Gomez (Security Tech)',
         description: 'Keycard reader sensor recalibration completed at pedestrian main gate.',
-        created_at: '2026-03-01 11:20',
+        created_at: '2027-02-01 11:20',
       },
       {
         id: 2,
@@ -67,7 +67,7 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
         status: 'RECEIVED',
         assigned_technician: 'Pending Assignment',
         description: 'Hallway motion light sensor requires recalibration and LED bulb replacement.',
-        created_at: '2026-03-01 10:05',
+        created_at: '2027-02-01 10:05',
       },
       {
         id: 3,
@@ -80,7 +80,7 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
         status: 'ASSIGNED',
         assigned_technician: 'David Sun (AirCold Tech)',
         description: 'Biannual scheduled maintenance on rooftop condenser unit #2.',
-        created_at: '2026-02-28 16:45',
+        created_at: '2027-01-28 16:45',
       },
       {
         id: 4,
@@ -93,7 +93,7 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
         status: 'RESOLVED',
         assigned_technician: 'Carlos Plumbing Pros',
         description: 'Restroom pressure valve replacement and leak isolation executed in under 2 hours.',
-        created_at: '2026-02-27 08:30',
+        created_at: '2027-01-27 08:30',
       },
     ];
   }, [tickets]);

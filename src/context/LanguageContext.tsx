@@ -46,8 +46,8 @@ export const translations: Translations = {
     es: 'Iniciando sesión...',
   },
   loginFooter: {
-    en: '© 2026 HYCO Property Management • Commercial, Industrial & Residential',
-    es: '© 2026 HYCO Property Management • Comercial, Industrial y Residencial',
+    en: '© 2027 HYCO Property Management • Commercial, Industrial & Residential',
+    es: '© 2027 HYCO Property Management • Comercial, Industrial y Residencial',
   },
 
   // Navigation

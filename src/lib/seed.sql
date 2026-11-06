@@ -27,10 +27,10 @@ VALUES
 -- Seed Invoices (Synced with QuickBooks Online)
 INSERT INTO invoices (invoice_number, qbo_invoice_id, tenant_name, suite_reference, amount, due_date, status, paid_at)
 VALUES
-('INV-2026-0891', 'QBO-10492', 'Global Logistics Corp', 'Suite 402', 4200.00, CURRENT_DATE - INTERVAL '3 days', 'PAID', CURRENT_TIMESTAMP - INTERVAL '2 days'),
-('INV-2026-0892', 'QBO-10493', 'Atlas Trans & Freight', 'Warehouse Bay 105', 7800.00, CURRENT_DATE + INTERVAL '5 days', 'PENDING', NULL),
-('INV-2026-0893', 'QBO-10494', 'Dr. Roberto Mendoza', 'Penthouse 12B', 5500.00, CURRENT_DATE - INTERVAL '1 day', 'PAID', CURRENT_TIMESTAMP - INTERVAL '1 day'),
-('INV-2026-0894', 'QBO-10495', 'Nexa Creative Lab', 'Suite 310', 2650.00, CURRENT_DATE - INTERVAL '10 days', 'OVERDUE', NULL);
+('INV-2027-0891', 'QBO-10492', 'Global Logistics Corp', 'Suite 402', 4200.00, CURRENT_DATE - INTERVAL '3 days', 'PAID', CURRENT_TIMESTAMP - INTERVAL '2 days'),
+('INV-2027-0892', 'QBO-10493', 'Atlas Trans & Freight', 'Warehouse Bay 105', 7800.00, CURRENT_DATE + INTERVAL '5 days', 'PENDING', NULL),
+('INV-2027-0893', 'QBO-10494', 'Dr. Roberto Mendoza', 'Penthouse 12B', 5500.00, CURRENT_DATE - INTERVAL '1 day', 'PAID', CURRENT_TIMESTAMP - INTERVAL '1 day'),
+('INV-2027-0894', 'QBO-10495', 'Nexa Creative Lab', 'Suite 310', 2650.00, CURRENT_DATE - INTERVAL '10 days', 'OVERDUE', NULL);
 
 -- Seed Maintenance Tickets (Tenant Portal Helpdesk)
 INSERT INTO maintenance_tickets (ticket_code, property_name, suite_number, tenant_name, category, priority, status, assigned_technician, description)
