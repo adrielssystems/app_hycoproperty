@@ -40,8 +40,13 @@ advance.md
 graphify-out/
 src/graphify-out/
 *.sh
+*.bash
+*.ps1
+*.bat
+*.cmd
 *.ppk
 *.key
+*.pem
 
 # vercel
 .vercel
