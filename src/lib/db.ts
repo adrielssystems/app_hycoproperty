@@ -1,10 +1,13 @@
 import { Pool } from 'pg';
 
-const connectionString = process.env.DATABASE_URL || 'postgresql://hyco_admin:hyco_password123@localhost:5432/hycoproperty_db';
+const connectionString = process.env.DATABASE_URL || '';
 
 let pool: Pool | null = null;
 
 export function getDbPool(): Pool {
+  if (!connectionString) {
+    throw new Error('DATABASE_URL environment variable is not defined.');
+  }
   if (!pool) {
     pool = new Pool({
       connectionString,
