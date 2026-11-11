@@ -92,8 +92,8 @@ export const translations: Translations = {
   // Properties Section
   propertiesTitle: { en: 'HYCO Buildings & Complexes', es: 'Edificios y Complejos HYCO' },
   propertiesSubtitle: {
-    en: 'Zero Double-Entry sync with Public Website (For Lease section)',
-    es: 'Cero Doble Carga: sincronización automática con la Web Pública',
+    en: 'Real-time synchronization with Public Website (For Lease section)',
+    es: 'Sincronización en tiempo real con la Web Pública (Sección For Lease)',
   },
   addSuiteLink: { en: '+ Add Suite', es: '+ Agregar Suite' },
   totalSuites: { en: 'Total Suites', es: 'Total Suites' },
@@ -147,7 +147,7 @@ export const translations: Translations = {
   colHelpdesk: { en: 'Tenant Helpdesk', es: 'Helpdesk Inquilinos' },
   colHelpdeskSub: { en: 'Active open incidents', es: 'Incidencias activas en curso' },
   colWebSync: { en: 'Public Website Sync', es: 'Sincronización Web Pública' },
-  colWebSyncSub: { en: 'Zero Double-Entry (For Lease)', es: 'Cero Doble Carga (For Lease)' },
+  colWebSyncSub: { en: 'Direct Web Sync (For Lease)', es: 'Sincronización Web (For Lease)' },
   dbQboSynced: { en: 'All Systems Synced', es: 'Sistemas Sincronizados' },
 
   // Quick Actions
@@ -167,8 +167,8 @@ export const translations: Translations = {
 
   modalNewSuiteTitle: { en: 'Register New Suite / Unit', es: 'Registrar Nueva Suite / Espacio' },
   modalNewSuiteSub: {
-    en: 'Zero Double-Entry: instantly published to Public Web (For Lease) and Tenant Referral App.',
-    es: 'Cero Doble Carga: publicación instantánea en la Web Pública y app de inquilinos.',
+    en: 'Instantly publish to Public Web (For Lease) and Tenant Referral directory.',
+    es: 'Publicación directa en la Web Pública y directorio de inquilinos.',
   },
   modalShareTitle: { en: 'Share Suite (Deep Linking)', es: 'Compartir Suite (Deep Linking)' },
   modalShareSub: {
