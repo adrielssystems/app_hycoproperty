@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getDbPool } from '@/lib/db';
 
-export const dynamic = 'force-dynamic';
-
 // Fallback seed overrides reflecting the official PDF sample scenario
 const FALLBACK_OVERRIDES = [
   {

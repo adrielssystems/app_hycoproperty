@@ -2,8 +2,6 @@ import { NextResponse } from 'next/server';
 import { getDbPool } from '@/lib/db';
 import { OFFICIAL_QBO_ACCOUNT_MAPPINGS } from '@/lib/qboData';
 
-export const dynamic = 'force-dynamic';
-
 export async function GET() {
   try {
     const pool = getDbPool();

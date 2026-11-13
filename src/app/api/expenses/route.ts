@@ -2,8 +2,6 @@ import { NextResponse } from 'next/server';
 import { getDbPool } from '@/lib/db';
 import { SAMPLE_INDIANAPOLIS_EXPENSES, OFFICIAL_QBO_ACCOUNT_MAPPINGS } from '@/lib/qboData';
 
-export const dynamic = 'force-dynamic';
-
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);

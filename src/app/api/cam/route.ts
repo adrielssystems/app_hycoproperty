@@ -2,8 +2,6 @@ import { NextResponse } from 'next/server';
 import { getDbPool } from '@/lib/db';
 import { SAMPLE_INDIANAPOLIS_EXPENSES, OFFICIAL_QBO_ACCOUNT_MAPPINGS } from '@/lib/qboData';
 
-export const dynamic = 'force-dynamic';
-
 interface UnitCAMSummary {
   unit_id: number;
   unit_number: string;
