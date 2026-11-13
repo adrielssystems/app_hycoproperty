@@ -26,17 +26,18 @@ import {
   ArrowUpRight,
   ArrowDownLeft,
   Sparkles,
+  Activity,
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 
 export type ReportType =
-  | 'RENT_ROLL'
-  | 'TENANT_LEDGER'
-  | 'AR_AGING'
   | 'PROPERTY_PNL'
   | 'CAM_RECONCILIATION'
+  | 'RENT_ROLL'
+  | 'AR_AGING'
+  | 'OCCUPANCY_VACANCY'
   | 'LEASE_EXPIRATION'
-  | 'OCCUPANCY_VACANCY';
+  | 'TENANT_LEDGER';
 
 interface ReportsViewProps {
   onRefresh?: () => void;
@@ -653,11 +654,10 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* REPORT: PROPERTY P&L (MONOCHROME EXECUTIVE SVG CHARTS)                     */}
+      {/* 1. REPORT: PROPERTY P&L (MONOCHROME EXECUTIVE SVG CHARTS)                 */}
       {/* ========================================================================= */}
       {activeReport === 'PROPERTY_PNL' && (
         <div className="space-y-6">
-          {/* Executive Monochromatic Visual Charts */}
           {showCharts && (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
               {/* Financial Pillar Histogram (SVG) */}
@@ -677,12 +677,10 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
                 {/* SVG Executive Pillar Chart */}
                 <div className="pt-2">
                   <div className="h-44 w-full flex items-end justify-between gap-4 px-4 pb-4 border-b border-white/[0.06] relative">
-                    {/* Background Grid Lines */}
                     <div className="absolute inset-x-0 top-6 border-b border-white/[0.04] pointer-events-none" />
                     <div className="absolute inset-x-0 top-16 border-b border-white/[0.04] pointer-events-none" />
                     <div className="absolute inset-x-0 top-28 border-b border-white/[0.04] pointer-events-none" />
 
-                    {/* Pillar 1: Base Rent */}
                     <div className="flex-1 flex flex-col items-center gap-2 group">
                       <span className="text-[10px] font-mono text-white/70 group-hover:text-white transition-colors">
                         $372k
@@ -693,7 +691,6 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
                       </span>
                     </div>
 
-                    {/* Pillar 2: CAM Recovery */}
                     <div className="flex-1 flex flex-col items-center gap-2 group">
                       <span className="text-[10px] font-mono text-white/70 group-hover:text-white transition-colors">
                         $38.4k
@@ -704,7 +701,6 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
                       </span>
                     </div>
 
-                    {/* Pillar 3: OpEx Expenses */}
                     <div className="flex-1 flex flex-col items-center gap-2 group">
                       <span className="text-[10px] font-mono text-white/70 group-hover:text-white transition-colors">
                         -$160.2k
@@ -715,7 +711,6 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
                       </span>
                     </div>
 
-                    {/* Pillar 4: NOI (Highlighted) */}
                     <div className="flex-1 flex flex-col items-center gap-2 group">
                       <span className="text-[10px] font-mono text-[#F3D270] font-bold group-hover:brightness-125 transition-colors">
                         $253.8k
@@ -726,7 +721,6 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
                       </span>
                     </div>
 
-                    {/* Pillar 5: Net Free Cash Flow */}
                     <div className="flex-1 flex flex-col items-center gap-2 group">
                       <span className="text-[10px] font-mono text-white font-bold group-hover:brightness-125 transition-colors">
                         $225.4k
@@ -763,14 +757,11 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
                     return (
                       <div key={idx} className="space-y-1">
                         <div className="flex items-center justify-between text-xs">
-                          <span className="text-white/80 font-medium">
-                            {exp.category}
-                          </span>
+                          <span className="text-white/80 font-medium">{exp.category}</span>
                           <span className="font-mono text-white/90">
                             ${exp.amount.toLocaleString()} <span className="text-white/40 text-[10px]">({pct}%)</span>
                           </span>
                         </div>
-                        {/* Monochromatic Gold / Slate Bar */}
                         <div className="w-full h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
                           <div
                             className="h-full rounded-full transition-all duration-500"
@@ -792,7 +783,6 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
               <p className="text-xs text-white/50">Fiscal Year {selectedYear} • Standard Real Estate GAAP Breakdown</p>
             </div>
 
-            {/* Income Section */}
             <div className="space-y-3">
               <div className="flex items-center justify-between text-xs font-bold text-[#F3D270] uppercase tracking-wider pb-1 border-b border-[#F3D270]/20">
                 <span>1. Operating Rental Revenue</span>
@@ -812,7 +802,6 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
               </div>
             </div>
 
-            {/* Operating Expenses Section */}
             <div className="space-y-3">
               <div className="flex items-center justify-between text-xs font-bold text-white/80 uppercase tracking-wider pb-1 border-b border-white/[0.1]">
                 <span>2. Operating & CAM Expenses (From QBO)</span>
@@ -832,7 +821,6 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
               </div>
             </div>
 
-            {/* Net Operating Income (NOI) */}
             <div className="p-4 rounded-xl bg-[#0B172A] border border-[#D4AF37]/30 flex items-center justify-between">
               <div>
                 <span className="text-xs font-bold text-[#F3D270] uppercase tracking-wider block">Net Operating Income (NOI)</span>
@@ -843,7 +831,6 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
               </div>
             </div>
 
-            {/* Capital & Non-Recoverables */}
             <div className="space-y-3">
               <div className="flex items-center justify-between text-xs font-bold text-white/60 uppercase tracking-wider pb-1 border-b border-white/[0.1]">
                 <span>3. Non-Recoverable Overhead & Capital Expenditures</span>
@@ -861,11 +848,10 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* REPORT: CAM RECONCILIATION (SOBER DUAL-PILLAR COMPARATIVE GRAPH)          */}
+      {/* 2. REPORT: CAM RECONCILIATION (SOBER DUAL-PILLAR COMPARATIVE GRAPH)       */}
       {/* ========================================================================= */}
       {activeReport === 'CAM_RECONCILIATION' && (
         <div className="space-y-6">
-          {/* Visual Analytics Charts */}
           {showCharts && (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
               {/* CAM Allocation vs Billed Comparison Histogram */}
@@ -906,7 +892,6 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
                           </div>
                         </div>
 
-                        {/* Dual Bar Representation */}
                         <div className="space-y-1">
                           <div className="w-full h-2.5 rounded-md bg-white/[0.04] overflow-hidden flex items-center">
                             <div
@@ -1040,11 +1025,10 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* REPORT: RENT ROLL (SOBER GOLD/SLATE BARS)                                 */}
+      {/* 3. REPORT: RENT ROLL (SOBER GOLD/SLATE SVG HISTOGRAM & METRICS)           */}
       {/* ========================================================================= */}
       {activeReport === 'RENT_ROLL' && (
-        <div className="space-y-4">
-          {/* Summary metrics */}
+        <div className="space-y-6">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="p-3.5 rounded-xl bg-[#091322]/80 border border-white/[0.08]">
               <span className="text-[10px] text-white/40 uppercase font-semibold block">Total Managed Area</span>
@@ -1064,77 +1048,86 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
             </div>
           </div>
 
-          {/* Visual Charts Section */}
+          {/* SVG Pillar Revenue Distribution Chart */}
           {showCharts && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="glass-card p-4 rounded-2xl border border-white/[0.08] space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
+              <div className="md:col-span-8 glass-card p-5 rounded-2xl border border-white/[0.08] space-y-4">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-white uppercase tracking-wider">
-                    {language === 'en' ? 'Monthly Collections by Complex' : 'Recaudación Mensual por Edificio'}
-                  </h4>
-                  <span className="text-[10px] text-[#F3D270] font-semibold">Indianapolis Portfolio</span>
+                  <div className="flex items-center gap-2">
+                    <Building2 className="text-[#F3D270]" size={16} />
+                    <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+                      {language === 'en' ? 'Monthly Collections by Building Complex' : 'Recaudación Mensual por Edificio'}
+                    </h4>
+                  </div>
+                  <span className="text-[10px] text-[#F3D270] font-mono">Indianapolis Portfolio</span>
                 </div>
-                <div className="space-y-2.5 text-xs">
-                  <div>
-                    <div className="flex justify-between text-[11px] mb-1">
-                      <span className="text-white/80">7898 Zionsville Rd Commercial</span>
-                      <span className="font-mono text-white">$11,130/mo</span>
-                    </div>
-                    <div className="w-full h-2 rounded-full bg-white/[0.06] overflow-hidden">
-                      <div className="h-full bg-gradient-to-r from-[#D4AF37] to-[#F3D270] rounded-full w-[40%]" />
-                    </div>
+
+                <div className="h-40 w-full flex items-end justify-around gap-6 px-4 pb-3 border-b border-white/[0.06] relative">
+                  <div className="absolute inset-x-0 top-6 border-b border-white/[0.04] pointer-events-none" />
+                  <div className="absolute inset-x-0 top-18 border-b border-white/[0.04] pointer-events-none" />
+
+                  {/* Complex 1 */}
+                  <div className="flex-1 flex flex-col items-center gap-2 group">
+                    <span className="text-[10px] font-mono text-white/80 group-hover:text-white">$11.1k</span>
+                    <div className="w-full max-w-[64px] h-24 rounded-t-lg bg-gradient-to-t from-[#B89222] to-[#F3D270] shadow-md transition-all group-hover:brightness-110" />
+                    <span className="text-[9px] font-semibold text-white/60 text-center truncate max-w-[80px]">Zionsville Rd</span>
                   </div>
 
-                  <div>
-                    <div className="flex justify-between text-[11px] mb-1">
-                      <span className="text-white/80">Park 100 Industrial Center</span>
-                      <span className="font-mono text-white">$16,470/mo</span>
-                    </div>
-                    <div className="w-full h-2 rounded-full bg-white/[0.06] overflow-hidden">
-                      <div className="h-full bg-[#D4AF37] rounded-full w-[60%]" />
-                    </div>
+                  {/* Complex 2 */}
+                  <div className="flex-1 flex flex-col items-center gap-2 group">
+                    <span className="text-[10px] font-mono text-white/80 group-hover:text-white">$16.5k</span>
+                    <div className="w-full max-w-[64px] h-32 rounded-t-lg bg-gradient-to-t from-[#D4AF37] to-[#FFF5D0] shadow-md transition-all group-hover:brightness-110" />
+                    <span className="text-[9px] font-semibold text-white/60 text-center truncate max-w-[80px]">Park 100</span>
                   </div>
 
-                  <div>
-                    <div className="flex justify-between text-[11px] mb-1">
-                      <span className="text-white/80">Morris Street Flex Hub</span>
-                      <span className="font-mono text-white">$4,860/mo</span>
-                    </div>
-                    <div className="w-full h-2 rounded-full bg-white/[0.06] overflow-hidden">
-                      <div className="h-full bg-white/40 rounded-full w-[20%]" />
-                    </div>
+                  {/* Complex 3 */}
+                  <div className="flex-1 flex flex-col items-center gap-2 group">
+                    <span className="text-[10px] font-mono text-white/80 group-hover:text-white">$4.9k</span>
+                    <div className="w-full max-w-[64px] h-14 rounded-t-lg bg-white/30 transition-all group-hover:brightness-110" />
+                    <span className="text-[9px] font-semibold text-white/60 text-center truncate max-w-[80px]">Morris St</span>
+                  </div>
+
+                  {/* Complex 4 */}
+                  <div className="flex-1 flex flex-col items-center gap-2 group">
+                    <span className="text-[10px] font-mono text-white/80 group-hover:text-white">$2.9k</span>
+                    <div className="w-full max-w-[64px] h-10 rounded-t-lg bg-white/20 transition-all group-hover:brightness-110" />
+                    <span className="text-[9px] font-semibold text-white/60 text-center truncate max-w-[80px]">Meridian N</span>
                   </div>
                 </div>
               </div>
 
-              <div className="glass-card p-4 rounded-2xl border border-white/[0.08] space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-white uppercase tracking-wider">
-                    {language === 'en' ? 'Rent vs CAM Revenue Share' : 'Distribución Renta Base vs CAM'}
+              {/* Revenue Ratio Donut Breakdown Card */}
+              <div className="md:col-span-4 glass-card p-5 rounded-2xl border border-white/[0.08] flex flex-col justify-between space-y-4">
+                <div>
+                  <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-3">
+                    {language === 'en' ? 'Base Rent vs CAM Share' : 'Proporción Renta Base vs CAM'}
                   </h4>
-                  <span className="text-[10px] text-[#F3D270] font-semibold">89.4% Base / 10.6% CAM</span>
-                </div>
-                <div className="flex items-center gap-3 pt-2">
-                  <div className="flex-1 space-y-1">
-                    <div className="flex justify-between text-xs text-white/70">
-                      <span>Base Rental Revenue</span>
-                      <span className="font-mono text-white font-bold">${rentRollTotals.base.toLocaleString()}</span>
+                  <div className="space-y-3">
+                    <div>
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="text-white/80">Base Monthly Rent (89.4%)</span>
+                        <span className="font-mono text-white font-bold">${rentRollTotals.base.toLocaleString()}</span>
+                      </div>
+                      <div className="w-full h-2 rounded-full bg-white/[0.06] overflow-hidden">
+                        <div className="h-full bg-gradient-to-r from-[#D4AF37] to-[#F3D270] rounded-full w-[89%]" />
+                      </div>
                     </div>
-                    <div className="w-full h-2.5 rounded-full bg-white/[0.06] overflow-hidden">
-                      <div className="h-full bg-gradient-to-r from-[#D4AF37] to-[#B89222] rounded-full w-[89%]" />
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 pt-1">
-                  <div className="flex-1 space-y-1">
-                    <div className="flex justify-between text-xs text-white/70">
-                      <span>CAM Maintenance Pool</span>
-                      <span className="font-mono text-[#F3D270] font-bold">${rentRollTotals.cam.toLocaleString()}</span>
-                    </div>
-                    <div className="w-full h-2 rounded-full bg-white/[0.06] overflow-hidden">
-                      <div className="h-full bg-white/40 rounded-full w-[11%]" />
+
+                    <div>
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="text-white/60">CAM Common Area (10.6%)</span>
+                        <span className="font-mono text-[#F3D270] font-bold">${rentRollTotals.cam.toLocaleString()}</span>
+                      </div>
+                      <div className="w-full h-2 rounded-full bg-white/[0.06] overflow-hidden">
+                        <div className="h-full bg-white/30 rounded-full w-[11%]" />
+                      </div>
                     </div>
                   </div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] text-[11px] text-white/50 flex items-center justify-between">
+                  <span>Gross Potential Revenue:</span>
+                  <span className="font-mono text-white font-bold">${(rentRollTotals.total * 12).toLocaleString()} / yr</span>
                 </div>
               </div>
             </div>
@@ -1194,44 +1187,78 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* REPORT: A/R AGING (SOBER FINANCIAL BUCKETS)                               */}
+      {/* 4. REPORT: A/R AGING (SOBER FINANCIAL BUCKETS & RECOVERY VELOCITY)        */}
       {/* ========================================================================= */}
       {activeReport === 'AR_AGING' && (
-        <div className="space-y-4">
+        <div className="space-y-6">
           {showCharts && (
-            <div className="glass-card p-5 rounded-2xl border border-white/[0.08] space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Clock className="text-[#F3D270]" size={16} />
-                  <h4 className="text-xs font-bold text-white uppercase tracking-wider">
-                    {language === 'en' ? 'Accounts Receivable Aging Distribution' : 'Distribución Antigüedad de Cobro'}
-                  </h4>
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
+              <div className="md:col-span-8 glass-card p-5 rounded-2xl border border-white/[0.08] space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Clock className="text-[#F3D270]" size={16} />
+                    <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+                      {language === 'en' ? 'Receivables Aging Buckets' : 'Antigüedad de Cuentas por Cobrar'}
+                    </h4>
+                  </div>
+                  <span className="text-[11px] font-mono font-bold text-[#F3D270] bg-[#D4AF37]/15 px-2.5 py-1 rounded-lg border border-[#D4AF37]/30">
+                    96.8% Collection Rate
+                  </span>
                 </div>
-                <span className="text-[11px] font-bold text-white font-mono bg-white/[0.06] px-2.5 py-1 rounded-lg border border-white/[0.1]">
-                  96.8% Collection Rate
-                </span>
+
+                <div className="h-36 w-full flex items-end justify-around gap-6 px-4 pb-3 border-b border-white/[0.06] relative">
+                  <div className="absolute inset-x-0 top-6 border-b border-white/[0.04] pointer-events-none" />
+                  <div className="absolute inset-x-0 top-18 border-b border-white/[0.04] pointer-events-none" />
+
+                  {/* Current */}
+                  <div className="flex-1 flex flex-col items-center gap-2 group">
+                    <span className="text-[10px] font-mono text-white/80 group-hover:text-white">$7,250</span>
+                    <div className="w-full max-w-[64px] h-28 rounded-t-lg bg-gradient-to-t from-[#B89222] to-[#F3D270] shadow-md transition-all group-hover:brightness-110" />
+                    <span className="text-[9px] font-semibold text-white/60 text-center uppercase">0-30 Days</span>
+                  </div>
+
+                  {/* 31-60 Days */}
+                  <div className="flex-1 flex flex-col items-center gap-2 group">
+                    <span className="text-[10px] font-mono text-white/80 group-hover:text-white">$2,850</span>
+                    <div className="w-full max-w-[64px] h-14 rounded-t-lg bg-white/40 transition-all group-hover:brightness-110" />
+                    <span className="text-[9px] font-semibold text-white/60 text-center uppercase">31-60 Days</span>
+                  </div>
+
+                  {/* 61-90 Days */}
+                  <div className="flex-1 flex flex-col items-center gap-2 group">
+                    <span className="text-[10px] font-mono text-white/40">$0.00</span>
+                    <div className="w-full max-w-[64px] h-1 rounded-t-lg bg-white/10" />
+                    <span className="text-[9px] font-semibold text-white/40 text-center uppercase">61-90 Days</span>
+                  </div>
+
+                  {/* 90+ Days */}
+                  <div className="flex-1 flex flex-col items-center gap-2 group">
+                    <span className="text-[10px] font-mono text-white/40">$0.00</span>
+                    <div className="w-full max-w-[64px] h-1 rounded-t-lg bg-white/10" />
+                    <span className="text-[9px] font-semibold text-white/40 text-center uppercase">90+ Days</span>
+                  </div>
+                </div>
               </div>
 
-              {/* Progress bar of buckets in Gold / Slate */}
-              <div className="space-y-2">
-                <div className="w-full h-3 rounded-lg bg-white/[0.06] overflow-hidden flex">
-                  <div className="h-full bg-gradient-to-r from-[#D4AF37] to-[#F3D270] w-[72%]" title="Current (0-30 Days): $7,250" />
-                  <div className="h-full bg-white/30 w-[28%]" title="31-60 Days: $2,850" />
-                  <div className="h-full bg-white/10 w-[0%]" title="61-90+ Days: $0" />
+              {/* DSO & Velocity Metrics Card */}
+              <div className="md:col-span-4 glass-card p-5 rounded-2xl border border-white/[0.08] flex flex-col justify-between space-y-4">
+                <div>
+                  <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-2">
+                    {language === 'en' ? 'Collection Velocity' : 'Velocidad de Recaudo'}
+                  </h4>
+                  <div className="text-2xl font-extrabold text-[#F3D270] font-mono">18 Days</div>
+                  <span className="text-xs text-white/50">Average DSO (Days Sales Outstanding)</span>
                 </div>
-                <div className="flex items-center justify-between text-xs text-white/60 pt-1">
-                  <span className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-[#D4AF37]" />
-                    Current (0-30d): <strong className="text-white font-mono">$7,250 (71.8%)</strong>
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-white/40" />
-                    31-60 Days: <strong className="text-white/80 font-mono">$2,850 (28.2%)</strong>
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-white/10" />
-                    90+ Days: <strong className="text-white/40 font-mono">$0.00 (0.0%)</strong>
-                  </span>
+
+                <div className="space-y-2 pt-2 border-t border-white/[0.06] text-xs">
+                  <div className="flex justify-between text-white/70">
+                    <span>Delinquency Rate:</span>
+                    <span className="font-mono text-white font-bold">3.2%</span>
+                  </div>
+                  <div className="flex justify-between text-white/70">
+                    <span>Active Disputed Invoices:</span>
+                    <span className="font-mono text-white font-bold">0</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1294,39 +1321,54 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* REPORT: OCCUPANCY & VACANCY (EXECUTIVE MONOCHROME BARS)                    */}
+      {/* 5. REPORT: OCCUPANCY & VACANCY (EXECUTIVE MONOCHROME BARS)                 */}
       {/* ========================================================================= */}
       {activeReport === 'OCCUPANCY_VACANCY' && (
-        <div className="space-y-4">
+        <div className="space-y-6">
           {showCharts && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="glass-card p-5 rounded-2xl border border-white/[0.08] space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
+              <div className="md:col-span-8 glass-card p-5 rounded-2xl border border-white/[0.08] space-y-4">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-white uppercase tracking-wider">
-                    {language === 'en' ? 'Physical vs Economic Occupancy' : 'Ocupación Física vs Económica'}
-                  </h4>
-                  <span className="text-[11px] text-[#F3D270] font-bold">94.2% Portfolio Average</span>
+                  <div className="flex items-center gap-2">
+                    <PieChart className="text-[#F3D270]" size={16} />
+                    <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+                      {language === 'en' ? 'Physical vs Economic Occupancy Rate' : 'Tasa de Ocupación Física vs Económica'}
+                    </h4>
+                  </div>
+                  <span className="text-[11px] text-[#F3D270] font-bold font-mono">94.2% Portfolio Average</span>
                 </div>
 
-                <div className="space-y-3 pt-1">
+                <div className="h-40 w-full flex items-end justify-around gap-6 px-4 pb-3 border-b border-white/[0.06] relative">
+                  <div className="absolute inset-x-0 top-6 border-b border-white/[0.04] pointer-events-none" />
+                  <div className="absolute inset-x-0 top-18 border-b border-white/[0.04] pointer-events-none" />
+
                   {occupancyData.map((item, idx) => (
-                    <div key={idx} className="space-y-1">
-                      <div className="flex justify-between text-xs">
-                        <span className="text-white/80 font-medium">{item.property}</span>
-                        <span className="font-mono text-[#F3D270] font-bold">{item.physical_occupancy}%</span>
-                      </div>
-                      <div className="w-full h-2 rounded-full bg-white/[0.06] overflow-hidden flex gap-0.5">
+                    <div key={idx} className="flex-1 flex flex-col items-center gap-2 group">
+                      <span className="text-[10px] font-mono text-white/80">{item.physical_occupancy}%</span>
+                      <div className="w-full max-w-[56px] flex items-end gap-1 h-28">
                         <div
-                          className="h-full bg-gradient-to-r from-[#D4AF37] to-[#F3D270] rounded-full"
-                          style={{ width: `${item.physical_occupancy}%` }}
+                          className="flex-1 bg-gradient-to-t from-[#B89222] to-[#F3D270] rounded-t-sm shadow-md transition-all group-hover:brightness-110"
+                          style={{ height: `${item.physical_occupancy}%` }}
+                        />
+                        <div
+                          className="flex-1 bg-white/30 rounded-t-sm transition-all group-hover:brightness-110"
+                          style={{ height: `${item.economic_occupancy}%` }}
                         />
                       </div>
+                      <span className="text-[9px] font-semibold text-white/50 text-center truncate max-w-[70px]">
+                        {item.property.split(' ')[0]}
+                      </span>
                     </div>
                   ))}
                 </div>
+
+                <div className="flex items-center justify-between text-[11px] text-white/50 pt-1">
+                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-[#D4AF37]" /> Physical Occupancy</span>
+                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-white/30" /> Economic Occupancy</span>
+                </div>
               </div>
 
-              <div className="glass-card p-5 rounded-2xl border border-white/[0.08] flex flex-col justify-between space-y-4">
+              <div className="md:col-span-4 glass-card p-5 rounded-2xl border border-white/[0.08] flex flex-col justify-between space-y-4">
                 <div>
                   <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-2">
                     {language === 'en' ? 'Total Vacancy Loss Impact' : 'Pérdida Mensual por Vacancia'}
@@ -1395,39 +1437,52 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* REPORT: LEASE EXPIRATIONS (SOBER QUARTERLY TIMELINE)                      */}
+      {/* 6. REPORT: LEASE EXPIRATIONS (SOBER QUARTERLY TIMELINE HISTOGRAM)         */}
       {/* ========================================================================= */}
       {activeReport === 'LEASE_EXPIRATION' && (
-        <div className="space-y-4">
+        <div className="space-y-6">
           {showCharts && (
             <div className="glass-card p-5 rounded-2xl border border-white/[0.08] space-y-4">
               <div className="flex items-center justify-between">
-                <h4 className="text-xs font-bold text-white uppercase tracking-wider">
-                  {language === 'en' ? 'Upcoming Lease Expirations by Quarter' : 'Vencimientos de Contratos por Trimestre'}
-                </h4>
-                <span className="text-[11px] text-[#F3D270] font-semibold">FY 2027 Expirations</span>
+                <div className="flex items-center gap-2">
+                  <Calendar className="text-[#F3D270]" size={16} />
+                  <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+                    {language === 'en' ? 'Upcoming Lease Expirations Timeline (FY 2027)' : 'Cronograma de Vencimiento de Contratos (FY 2027)'}
+                  </h4>
+                </div>
+                <span className="text-[11px] text-[#F3D270] font-semibold font-mono">5 Renewal Cycles</span>
               </div>
 
-              <div className="grid grid-cols-4 gap-3 pt-1">
-                <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] text-center">
-                  <span className="text-[10px] text-white/40 uppercase font-semibold">Q1 2027</span>
-                  <div className="text-base font-bold text-[#F3D270] mt-1">1 Lease</div>
-                  <span className="text-[10px] text-white/50">$2,850/mo</span>
+              <div className="h-36 w-full flex items-end justify-around gap-6 px-4 pb-3 border-b border-white/[0.06] relative">
+                <div className="absolute inset-x-0 top-6 border-b border-white/[0.04] pointer-events-none" />
+                <div className="absolute inset-x-0 top-18 border-b border-white/[0.04] pointer-events-none" />
+
+                {/* Q1 */}
+                <div className="flex-1 flex flex-col items-center gap-2 group">
+                  <span className="text-[10px] font-mono text-[#F3D270]">$2.8k/mo</span>
+                  <div className="w-full max-w-[64px] h-14 rounded-t-lg bg-gradient-to-t from-[#B89222] to-[#F3D270] shadow-md transition-all group-hover:brightness-110" />
+                  <span className="text-[9px] font-semibold text-white/60 text-center uppercase">Q1 2027</span>
                 </div>
-                <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] text-center">
-                  <span className="text-[10px] text-white/40 uppercase font-semibold">Q2 2027</span>
-                  <div className="text-base font-bold text-white mt-1">1 Lease</div>
-                  <span className="text-[10px] text-white/50">$4,500/mo</span>
+
+                {/* Q2 */}
+                <div className="flex-1 flex flex-col items-center gap-2 group">
+                  <span className="text-[10px] font-mono text-white/80">$4.5k/mo</span>
+                  <div className="w-full max-w-[64px] h-20 rounded-t-lg bg-white/40 transition-all group-hover:brightness-110" />
+                  <span className="text-[9px] font-semibold text-white/60 text-center uppercase">Q2 2027</span>
                 </div>
-                <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] text-center">
-                  <span className="text-[10px] text-white/40 uppercase font-semibold">Q3 2027</span>
-                  <div className="text-base font-bold text-white/80 mt-1">1 Lease</div>
-                  <span className="text-[10px] text-white/50">$4,400/mo</span>
+
+                {/* Q3 */}
+                <div className="flex-1 flex flex-col items-center gap-2 group">
+                  <span className="text-[10px] font-mono text-white/80">$4.4k/mo</span>
+                  <div className="w-full max-w-[64px] h-18 rounded-t-lg bg-white/30 transition-all group-hover:brightness-110" />
+                  <span className="text-[9px] font-semibold text-white/60 text-center uppercase">Q3 2027</span>
                 </div>
-                <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] text-center">
-                  <span className="text-[10px] text-white/40 uppercase font-semibold">Q4 2027</span>
-                  <div className="text-base font-bold text-white/60 mt-1">2 Leases</div>
-                  <span className="text-[10px] text-white/50">$5,700/mo</span>
+
+                {/* Q4 */}
+                <div className="flex-1 flex flex-col items-center gap-2 group">
+                  <span className="text-[10px] font-mono text-white/80">$5.7k/mo</span>
+                  <div className="w-full max-w-[64px] h-26 rounded-t-lg bg-white/20 transition-all group-hover:brightness-110" />
+                  <span className="text-[9px] font-semibold text-white/60 text-center uppercase">Q4 2027</span>
                 </div>
               </div>
             </div>
@@ -1459,9 +1514,7 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
                       <td className="py-4 px-6 font-mono text-white font-bold">${row.monthly_rent.toFixed(2)}</td>
                       <td className="py-4 px-6 font-mono text-white">{row.expiration_date}</td>
                       <td className="py-4 px-6">
-                        <span className="font-bold text-white/70">
-                          {row.days_remaining} days
-                        </span>
+                        <span className="font-bold text-white/70">{row.days_remaining} days</span>
                       </td>
                       <td className="py-4 px-6 text-right">
                         <span className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-white/[0.05] text-white/80 border border-white/[0.08]">
@@ -1478,10 +1531,10 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* REPORT: TENANT LEDGER                                                     */}
+      {/* 7. REPORT: TENANT LEDGER (WITH CASHFLOW TRAIL HISTOGRAM)                  */}
       {/* ========================================================================= */}
       {activeReport === 'TENANT_LEDGER' && (
-        <div className="space-y-4">
+        <div className="space-y-6">
           <div className="p-4 rounded-2xl bg-[#091322]/90 border border-white/[0.08] flex items-center justify-between">
             <div>
               <span className="text-xs text-white/50 uppercase tracking-wider font-semibold">Tenant Account Statement</span>
@@ -1494,6 +1547,54 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
               <span className="text-[10px] text-white/40 block">Net 30 True-up</span>
             </div>
           </div>
+
+          {/* SVG Payment Consistency Curve */}
+          {showCharts && (
+            <div className="glass-card p-5 rounded-2xl border border-white/[0.08] space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Activity className="text-[#F3D270]" size={16} />
+                  <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+                    {language === 'en' ? 'Payment Consistency & Running Balance Trail' : 'Consistencia de Pagos & Trayectoria de Saldo'}
+                  </h4>
+                </div>
+                <span className="text-[11px] font-mono text-[#F3D270] font-bold">100% On-Time Record</span>
+              </div>
+
+              <div className="h-32 w-full flex items-end justify-around gap-6 px-4 pb-3 border-b border-white/[0.06] relative">
+                <div className="absolute inset-x-0 top-6 border-b border-white/[0.04] pointer-events-none" />
+                <div className="absolute inset-x-0 top-16 border-b border-white/[0.04] pointer-events-none" />
+
+                {/* Oct */}
+                <div className="flex-1 flex flex-col items-center gap-1 group">
+                  <span className="text-[10px] font-mono text-white/80">$3,920</span>
+                  <div className="w-full max-w-[56px] h-20 rounded-t-sm bg-gradient-to-t from-[#B89222] to-[#F3D270] shadow-sm" />
+                  <span className="text-[9px] font-semibold text-white/50">Oct 2026 (Paid)</span>
+                </div>
+
+                {/* Nov */}
+                <div className="flex-1 flex flex-col items-center gap-1 group">
+                  <span className="text-[10px] font-mono text-white/80">$3,920</span>
+                  <div className="w-full max-w-[56px] h-20 rounded-t-sm bg-gradient-to-t from-[#B89222] to-[#F3D270] shadow-sm" />
+                  <span className="text-[9px] font-semibold text-white/50">Nov 2026 (Paid)</span>
+                </div>
+
+                {/* Dec */}
+                <div className="flex-1 flex flex-col items-center gap-1 group">
+                  <span className="text-[10px] font-mono text-white/80">$3,920</span>
+                  <div className="w-full max-w-[56px] h-20 rounded-t-sm bg-gradient-to-t from-[#B89222] to-[#F3D270] shadow-sm" />
+                  <span className="text-[9px] font-semibold text-white/50">Dec 2026 (Paid)</span>
+                </div>
+
+                {/* CAM Adjustment */}
+                <div className="flex-1 flex flex-col items-center gap-1 group">
+                  <span className="text-[10px] font-mono text-[#F3D270]">+$248.50</span>
+                  <div className="w-full max-w-[56px] h-5 rounded-t-sm bg-white/40" />
+                  <span className="text-[9px] font-semibold text-white/50">True-Up Due</span>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="glass-card rounded-2xl border border-white/[0.08] overflow-hidden">
             <div className="overflow-x-auto scrollbar-none">
