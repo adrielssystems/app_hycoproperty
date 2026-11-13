@@ -55,6 +55,7 @@ export const translations: Translations = {
   navProperties: { en: 'Buildings & Suites', es: 'Edificios & Suites' },
   navTenants: { en: 'Tenants', es: 'Inquilinos' },
   navBilling: { en: 'Billing & Finance', es: 'Facturación & Finanzas' },
+  navReports: { en: 'Financial Reports', es: 'Reportes Financieros' },
   navMaintenance: { en: 'Helpdesk Tickets', es: 'Tickets de Ayuda' },
   navSync: { en: 'Live Cloud Sync', es: 'Sincronización Cloud' },
   signOut: { en: 'Sign Out', es: 'Cerrar Sesión' },
@@ -192,15 +193,18 @@ interface LanguageContextType {
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Default language is natively ENGLISH ('en')
-  const [language, setLanguageState] = useState<Language>('en');
-
-  useEffect(() => {
-    const saved = localStorage.getItem('hyco_lang') as Language;
-    if (saved === 'en' || saved === 'es') {
-      setLanguageState(saved);
+  // Default language is natively ENGLISH ('en'), initialized lazily from localStorage if present
+  const [language, setLanguageState] = useState<Language>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('hyco_lang') as Language;
+        if (saved === 'en' || saved === 'es') return saved;
+      } catch {
+        // Fallback for SSR or restricted storage
+      }
     }
-  }, []);
+    return 'en';
+  });
 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);

@@ -65,3 +65,44 @@ CREATE TABLE IF NOT EXISTS maintenance_tickets (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- QuickBooks Online (QBO) Chart of Accounts & CAM Recovery Rules Mapping
+CREATE TABLE IF NOT EXISTS qbo_account_mappings (
+  id SERIAL PRIMARY KEY,
+  qbo_account_id VARCHAR(100),
+  qbo_account_name VARCHAR(150) UNIQUE NOT NULL,
+  platform_category VARCHAR(100) NOT NULL,
+  default_recovery VARCHAR(50) NOT NULL, -- 'Recoverable', 'Lease-Specific', 'Non-Recoverable'
+  account_type VARCHAR(50) DEFAULT 'Expense',
+  description TEXT,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Property Level Expenses (Synchronized from QBO Bills, Cards, and General Ledger)
+CREATE TABLE IF NOT EXISTS property_expenses (
+  id SERIAL PRIMARY KEY,
+  property_id INT REFERENCES properties(id) ON DELETE CASCADE,
+  account_mapping_id INT REFERENCES qbo_account_mappings(id) ON DELETE SET NULL,
+  qbo_expense_id VARCHAR(100),
+  vendor_name VARCHAR(150) NOT NULL,
+  amount NUMERIC(12, 2) NOT NULL,
+  expense_date DATE NOT NULL,
+  fiscal_year INT NOT NULL,
+  payment_method VARCHAR(50) DEFAULT 'ACH',
+  description TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Lease-Level CAM Overrides (Lease provisions override account-level defaults)
+CREATE TABLE IF NOT EXISTS lease_cam_overrides (
+  id SERIAL PRIMARY KEY,
+  unit_id INT REFERENCES units(id) ON DELETE CASCADE,
+  account_mapping_id INT REFERENCES qbo_account_mappings(id) ON DELETE CASCADE,
+  override_status VARCHAR(50) NOT NULL, -- 'Included', 'Excluded'
+  notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(unit_id, account_mapping_id)
+);
+
+

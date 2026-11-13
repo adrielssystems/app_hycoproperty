@@ -1,5 +1,6 @@
 import { getDbPool } from './db';
 import { hashPassword } from './auth';
+import { OFFICIAL_QBO_ACCOUNT_MAPPINGS, SAMPLE_INDIANAPOLIS_EXPENSES } from './qboData';
 import fs from 'fs';
 import path from 'path';
 
@@ -224,5 +225,89 @@ export async function initAndSeedDatabase() {
     } catch (sErr) {
       console.warn('User superadmin sync warning:', sErr);
     }
+  }
+
+  // ==============================================================================
+  //   QBO & CAM Recovery Logic Seeding (Developer Requirements)
+  // ==============================================================================
+  try {
+    // 1. Seed/Update 43 Official QBO Account Mappings
+    for (const mapping of OFFICIAL_QBO_ACCOUNT_MAPPINGS) {
+      await pool.query(
+        `INSERT INTO qbo_account_mappings (qbo_account_name, platform_category, default_recovery, description)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (qbo_account_name) DO UPDATE SET
+           platform_category = EXCLUDED.platform_category,
+           default_recovery = EXCLUDED.default_recovery,
+           description = EXCLUDED.description;`,
+        [mapping.qbo_account_name, mapping.platform_category, mapping.default_recovery, mapping.description]
+      );
+    }
+
+    // 2. Seed Sample Property Expenses if empty
+    const existingExpenses = await pool.query('SELECT COUNT(*) FROM property_expenses');
+    if (parseInt(existingExpenses.rows[0].count) === 0) {
+      for (const exp of SAMPLE_INDIANAPOLIS_EXPENSES) {
+        const mappingRes = await pool.query(
+          'SELECT id FROM qbo_account_mappings WHERE qbo_account_name = $1 LIMIT 1',
+          [exp.qbo_account_name]
+        );
+        const mappingId = mappingRes.rows[0]?.id || null;
+
+        await pool.query(
+          `INSERT INTO property_expenses (property_id, account_mapping_id, vendor_name, amount, expense_date, fiscal_year, payment_method, description)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [exp.property_id, mappingId, exp.vendor_name, exp.amount, exp.expense_date, exp.fiscal_year, exp.payment_method, exp.description]
+        );
+      }
+    }
+
+    // 3. Seed Sample Lease Overrides (matching PDF specifications)
+    const existingOverrides = await pool.query('SELECT COUNT(*) FROM lease_cam_overrides');
+    if (parseInt(existingOverrides.rows[0].count) === 0) {
+      const roofingRes = await pool.query("SELECT id FROM qbo_account_mappings WHERE qbo_account_name = 'Repair & Maintenance:Roofing' LIMIT 1");
+      const legalRes = await pool.query("SELECT id FROM qbo_account_mappings WHERE qbo_account_name = 'Legal & Professional Fees' LIMIT 1");
+      const roofingId = roofingRes.rows[0]?.id;
+      const legalId = legalRes.rows[0]?.id;
+
+      // Unit 1 (Suite 200 - Tenant A): Roofing (Excluded), Legal & Professional (Excluded)
+      if (roofingId) {
+        await pool.query(
+          `INSERT INTO lease_cam_overrides (unit_id, account_mapping_id, override_status, notes)
+           VALUES (1, $1, 'Excluded', 'Lease Clause 14.2: Landlord covers structural roof repairs')
+           ON CONFLICT (unit_id, account_mapping_id) DO NOTHING`,
+          [roofingId]
+        );
+      }
+      if (legalId) {
+        await pool.query(
+          `INSERT INTO lease_cam_overrides (unit_id, account_mapping_id, override_status, notes)
+           VALUES (1, $1, 'Excluded', 'Lease Clause 14.5: Tenant exempt from owner legal expenses')
+           ON CONFLICT (unit_id, account_mapping_id) DO NOTHING`,
+          [legalId]
+        );
+      }
+
+      // Unit 3 (Warehouse Bay 4-A - Tenant B): Roofing (Included), Legal & Professional (Included)
+      if (roofingId) {
+        await pool.query(
+          `INSERT INTO lease_cam_overrides (unit_id, account_mapping_id, override_status, notes)
+           VALUES (3, $1, 'Included', 'Industrial NNN Lease: Tenant pays pro-rata roofing maintenance')
+           ON CONFLICT (unit_id, account_mapping_id) DO NOTHING`,
+          [roofingId]
+        );
+      }
+      if (legalId) {
+        await pool.query(
+          `INSERT INTO lease_cam_overrides (unit_id, account_mapping_id, override_status, notes)
+           VALUES (3, $1, 'Included', 'Industrial NNN Lease: Full operational passthrough')
+           ON CONFLICT (unit_id, account_mapping_id) DO NOTHING`,
+          [legalId]
+        );
+      }
+    }
+    console.log('QBO Account Mappings and CAM Recovery Rules initialized successfully!');
+  } catch (qboErr) {
+    console.warn('QBO and CAM Seeding warning:', qboErr);
   }
 }

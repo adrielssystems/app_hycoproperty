@@ -15,6 +15,7 @@ import {
   PropertiesView,
   TenantsView,
   BillingView,
+  ReportsView,
   MaintenanceView,
   SettingsView,
 } from '@/components';
@@ -236,6 +237,10 @@ export default function DashboardPage() {
               searchQuery={searchQuery}
               onRefresh={loadDashboardData}
             />
+          )}
+
+          {currentTab === 'reports' && (
+            <ReportsView onRefresh={loadDashboardData} />
           )}
 
           {currentTab === 'maintenance' && (

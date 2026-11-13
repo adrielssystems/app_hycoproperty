@@ -7,6 +7,7 @@ import {
   Building2,
   Users,
   DollarSign,
+  BarChart3,
   Wrench,
   Settings,
   LogOut,
@@ -35,13 +36,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const { t, language } = useLanguage();
 
   const isAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN';
-  const allowedSections = user?.allowed_sections || ['overview', 'properties', 'tenants', 'billing', 'maintenance'];
+  const allowedSections = user?.allowed_sections || ['overview', 'properties', 'tenants', 'billing', 'reports', 'maintenance'];
 
   const baseNavItems = [
     { id: 'overview', label: t('navOverview'), icon: LayoutGrid },
     { id: 'properties', label: t('navProperties'), icon: Building2 },
     { id: 'tenants', label: t('navTenants'), icon: Users },
     { id: 'billing', label: t('navBilling'), icon: DollarSign },
+    { id: 'reports', label: t('navReports'), icon: BarChart3 },
     { id: 'maintenance', label: t('navMaintenance'), icon: Wrench },
   ];
 

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Users,
   Mail,
@@ -11,8 +11,10 @@ import {
   CheckCircle2,
   Clock,
   AlertCircle,
+  Sliders,
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
+import { LeaseOverridesModal } from '@/components/billing/LeaseOverridesModal';
 
 interface Tenant {
   id: number;
@@ -43,6 +45,7 @@ export const TenantsView: React.FC<TenantsViewProps> = ({
   onOpenNewSuite,
 }) => {
   const { language } = useLanguage();
+  const [selectedTenantForOverrides, setSelectedTenantForOverrides] = useState<any | null>(null);
 
   // Fallback seed tenants if empty
   const activeTenantsList: Tenant[] = useMemo(() => {
@@ -254,6 +257,13 @@ export const TenantsView: React.FC<TenantsViewProps> = ({
                   <td className="py-4 px-6 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <button
+                        onClick={() => setSelectedTenantForOverrides(item)}
+                        title={language === 'en' ? 'Lease CAM Rules & Overrides' : 'Reglas CAM de Contrato'}
+                        className="p-2 rounded-lg bg-[#D4AF37]/15 hover:bg-[#D4AF37]/25 text-[#F3D270] transition-colors cursor-pointer"
+                      >
+                        <Sliders size={14} />
+                      </button>
+                      <button
                         onClick={() => alert(`Enviando estado de cuenta a ${item.email}`)}
                         title={language === 'en' ? 'Send Statement / Email' : 'Enviar Estado de Cuenta'}
                         className="p-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-white/70 hover:text-white transition-colors cursor-pointer"
@@ -263,7 +273,7 @@ export const TenantsView: React.FC<TenantsViewProps> = ({
                       <button
                         onClick={() => alert(`Abriendo expediente de contrato para ${item.name}`)}
                         title={language === 'en' ? 'View Lease Agreement' : 'Ver Contrato de Arrendamiento'}
-                        className="p-2 rounded-lg bg-[#D4AF37]/10 hover:bg-[#D4AF37]/20 text-[#F3D270] transition-colors cursor-pointer"
+                        className="p-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-white/70 hover:text-white transition-colors cursor-pointer"
                       >
                         <FileText size={14} />
                       </button>
@@ -329,8 +339,15 @@ export const TenantsView: React.FC<TenantsViewProps> = ({
                     <Phone size={12} />
                   </a>
                   <button
-                    onClick={() => alert(`Expediente de ${item.name}`)}
+                    onClick={() => setSelectedTenantForOverrides(item)}
                     className="p-1.5 rounded-lg bg-[#D4AF37]/20 text-[#F3D270]"
+                    title="CAM Overrides"
+                  >
+                    <Sliders size={12} />
+                  </button>
+                  <button
+                    onClick={() => alert(`Expediente de ${item.name}`)}
+                    className="p-1.5 rounded-lg bg-white/[0.06] text-white/70"
                     title="Contrato"
                   >
                     <FileText size={12} />
@@ -341,6 +358,15 @@ export const TenantsView: React.FC<TenantsViewProps> = ({
           ))}
         </div>
       </div>
+
+      {/* Lease CAM Overrides Modal */}
+      {selectedTenantForOverrides && (
+        <LeaseOverridesModal
+          isOpen={!!selectedTenantForOverrides}
+          onClose={() => setSelectedTenantForOverrides(null)}
+          tenant={selectedTenantForOverrides}
+        />
+      )}
     </div>
   );
 };
