@@ -276,7 +276,7 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
     },
   ];
 
-  // 4. Property P&L Data
+  // 4. Property P&L Data (Monochromatic Stepped Opacities of Gold & Slate)
   const propertyPnlData = {
     operating_income: [
       { item: 'Base Rental Revenue', qbo_account: 'Rental Income', amount: 372000.0 },
@@ -284,12 +284,12 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
       { item: 'Late Fees & Parking Permits', qbo_account: 'Fee Revenue', amount: 3600.0 },
     ],
     operating_expenses: [
-      { category: 'Property Taxes', qbo_account: 'Marion County Property Taxes', amount: 56800.0, color: '#3B82F6' },
-      { category: 'Utilities & Trash', qbo_account: 'Utilities & Waste Disposal', amount: 28450.0, color: '#10B981' },
-      { category: 'Insurance', qbo_account: 'Commercial Property Insurance', amount: 27400.0, color: '#F59E0B' },
-      { category: 'Repairs & Maintenance', qbo_account: 'Repairs & Maintenance (HVAC, Paving)', amount: 24900.0, color: '#EC4899' },
-      { category: 'Landscaping & Grounds', qbo_account: 'Landscaping', amount: 14200.0, color: '#8B5CF6' },
-      { category: 'Professional & Legal Fees', qbo_account: 'Legal & Accounting', amount: 8400.0, color: '#64748B' },
+      { category: 'Property Taxes', qbo_account: 'Marion County Property Taxes', amount: 56800.0, shade: '#F3D270' },
+      { category: 'Utilities & Trash', qbo_account: 'Utilities & Waste Disposal', amount: 28450.0, shade: '#D4AF37' },
+      { category: 'Insurance', qbo_account: 'Commercial Property Insurance', amount: 27400.0, shade: '#B89222' },
+      { category: 'Repairs & Maintenance', qbo_account: 'Repairs & Maintenance (HVAC, Paving)', amount: 24900.0, shade: '#CBD5E1' },
+      { category: 'Landscaping & Grounds', qbo_account: 'Landscaping', amount: 14200.0, shade: '#94A3B8' },
+      { category: 'Professional & Legal Fees', qbo_account: 'Legal & Accounting', amount: 8400.0, shade: '#64748B' },
     ],
     non_operating_expenses: [
       { item: 'Advertising & Marketing', qbo_account: 'Advertising (Owner)', amount: 5700.0 },
@@ -630,7 +630,7 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
             }`}
           >
             {showCharts ? <Eye size={13} /> : <EyeOff size={13} />}
-            <span>{language === 'en' ? 'Visual Charts' : 'Gráficos Analíticos'}</span>
+            <span>{language === 'en' ? 'Visual Analytics' : 'Analítica Gráfica'}</span>
           </button>
         </div>
 
@@ -653,116 +653,128 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* REPORT: PROPERTY P&L (WITH ADVANCED WATERFALL & EXPENSE CHARTS)           */}
+      {/* REPORT: PROPERTY P&L (MONOCHROME EXECUTIVE SVG CHARTS)                     */}
       {/* ========================================================================= */}
       {activeReport === 'PROPERTY_PNL' && (
         <div className="space-y-6">
-          {/* Visual Charts Section */}
+          {/* Executive Monochromatic Visual Charts */}
           {showCharts && (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-              {/* Waterfall Cashflow Bar Chart */}
+              {/* Financial Pillar Histogram (SVG) */}
               <div className="lg:col-span-7 glass-card p-5 rounded-2xl border border-white/[0.08] space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <BarChart2 className="text-[#F3D270]" size={16} />
                     <h4 className="text-xs font-bold text-white uppercase tracking-wider">
-                      {language === 'en' ? 'Financial Flow & NOI Waterfall' : 'Flujo Financiero & Cascada NOI'}
+                      {language === 'en' ? 'Operating Performance & Net Cash Flow' : 'Rendimiento Operativo & Flujo de Caja'}
                     </h4>
                   </div>
-                  <span className="text-[11px] font-bold text-emerald-400">
-                    61.3% {language === 'en' ? 'NOI Margin' : 'Margen NOI'}
+                  <span className="text-[11px] font-mono font-bold text-[#F3D270] bg-[#D4AF37]/15 px-2.5 py-1 rounded-lg border border-[#D4AF37]/30">
+                    61.3% NOI Margin
                   </span>
                 </div>
 
-                {/* Comparative Visual Bars */}
-                <div className="space-y-3 pt-2">
-                  {/* Gross Revenue */}
-                  <div>
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="text-white/80 font-medium">1. Gross Revenue (Income)</span>
-                      <span className="font-bold text-emerald-400 font-mono">${totalRevenue.toLocaleString()}</span>
+                {/* SVG Executive Pillar Chart */}
+                <div className="pt-2">
+                  <div className="h-44 w-full flex items-end justify-between gap-4 px-4 pb-4 border-b border-white/[0.06] relative">
+                    {/* Background Grid Lines */}
+                    <div className="absolute inset-x-0 top-6 border-b border-white/[0.04] pointer-events-none" />
+                    <div className="absolute inset-x-0 top-16 border-b border-white/[0.04] pointer-events-none" />
+                    <div className="absolute inset-x-0 top-28 border-b border-white/[0.04] pointer-events-none" />
+
+                    {/* Pillar 1: Base Rent */}
+                    <div className="flex-1 flex flex-col items-center gap-2 group">
+                      <span className="text-[10px] font-mono text-white/70 group-hover:text-white transition-colors">
+                        $372k
+                      </span>
+                      <div className="w-full max-w-[56px] h-32 rounded-t-lg bg-gradient-to-t from-[#B89222]/80 via-[#D4AF37] to-[#F3D270] shadow-md shadow-[#D4AF37]/15 transition-all group-hover:brightness-110" />
+                      <span className="text-[10px] font-semibold text-white/50 text-center uppercase tracking-tight">
+                        Base Rent
+                      </span>
                     </div>
-                    <div className="w-full h-3 rounded-full bg-white/[0.06] overflow-hidden">
-                      <div className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full w-full" />
+
+                    {/* Pillar 2: CAM Recovery */}
+                    <div className="flex-1 flex flex-col items-center gap-2 group">
+                      <span className="text-[10px] font-mono text-white/70 group-hover:text-white transition-colors">
+                        $38.4k
+                      </span>
+                      <div className="w-full max-w-[56px] h-10 rounded-t-lg bg-gradient-to-t from-white/20 to-white/40 transition-all group-hover:brightness-110" />
+                      <span className="text-[10px] font-semibold text-white/50 text-center uppercase tracking-tight">
+                        CAM Fees
+                      </span>
+                    </div>
+
+                    {/* Pillar 3: OpEx Expenses */}
+                    <div className="flex-1 flex flex-col items-center gap-2 group">
+                      <span className="text-[10px] font-mono text-white/70 group-hover:text-white transition-colors">
+                        -$160.2k
+                      </span>
+                      <div className="w-full max-w-[56px] h-20 rounded-t-lg bg-gradient-to-t from-white/10 via-white/20 to-white/30 transition-all group-hover:brightness-110" />
+                      <span className="text-[10px] font-semibold text-white/50 text-center uppercase tracking-tight">
+                        Total OpEx
+                      </span>
+                    </div>
+
+                    {/* Pillar 4: NOI (Highlighted) */}
+                    <div className="flex-1 flex flex-col items-center gap-2 group">
+                      <span className="text-[10px] font-mono text-[#F3D270] font-bold group-hover:brightness-125 transition-colors">
+                        $253.8k
+                      </span>
+                      <div className="w-full max-w-[56px] h-28 rounded-t-lg bg-gradient-to-t from-[#D4AF37] via-[#F3D270] to-[#FFF5D0] shadow-lg shadow-[#D4AF37]/30 transition-all group-hover:brightness-110" />
+                      <span className="text-[10px] font-bold text-[#F3D270] text-center uppercase tracking-tight">
+                        NOI
+                      </span>
+                    </div>
+
+                    {/* Pillar 5: Net Free Cash Flow */}
+                    <div className="flex-1 flex flex-col items-center gap-2 group">
+                      <span className="text-[10px] font-mono text-white font-bold group-hover:brightness-125 transition-colors">
+                        $225.4k
+                      </span>
+                      <div className="w-full max-w-[56px] h-24 rounded-t-lg bg-gradient-to-t from-[#0B1526] to-[#1E3354] border border-[#D4AF37]/50 shadow-md transition-all group-hover:brightness-110" />
+                      <span className="text-[10px] font-semibold text-white/70 text-center uppercase tracking-tight">
+                        Free Cash
+                      </span>
                     </div>
                   </div>
 
-                  {/* Operating Expenses */}
-                  <div>
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="text-white/80 font-medium">2. (-) Operating Expenses</span>
-                      <span className="font-bold text-amber-300 font-mono">-${totalOperatingExp.toLocaleString()}</span>
-                    </div>
-                    <div className="w-full h-3 rounded-full bg-white/[0.06] overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-amber-500 to-amber-400 rounded-full"
-                        style={{ width: `${(totalOperatingExp / totalRevenue) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* NOI */}
-                  <div>
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="text-[#F3D270] font-bold">3. (=) Net Operating Income (NOI)</span>
-                      <span className="font-extrabold text-[#F3D270] font-mono">${totalNetOperatingIncome.toLocaleString()}</span>
-                    </div>
-                    <div className="w-full h-3.5 rounded-full bg-white/[0.06] overflow-hidden p-0.5 border border-[#D4AF37]/30">
-                      <div
-                        className="h-full bg-gradient-to-r from-[#D4AF37] to-[#F3D270] rounded-full shadow-md"
-                        style={{ width: `${(totalNetOperatingIncome / totalRevenue) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Free Cashflow */}
-                  <div>
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="text-white/60 font-medium">4. (-) Owner CapEx & Overhead</span>
-                      <span className="font-bold text-rose-400 font-mono">-${totalCapExAdmin.toLocaleString()}</span>
-                    </div>
-                    <div className="w-full h-2 rounded-full bg-white/[0.06] overflow-hidden">
-                      <div
-                        className="h-full bg-rose-500/80 rounded-full"
-                        style={{ width: `${(totalCapExAdmin / totalRevenue) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="pt-2 border-t border-white/[0.06] flex items-center justify-between text-xs">
-                    <span className="text-white font-bold">Net Free Cash Flow to Owner:</span>
-                    <span className="text-base font-extrabold text-emerald-400 font-mono">${netCashFlow.toLocaleString()}</span>
+                  <div className="flex items-center justify-between pt-3 px-1 text-[11px] text-white/50">
+                    <span>Fiscal Year 2026 Consolidated Operating Performance</span>
+                    <span className="text-white/80 font-mono">Net Flow: <strong>$225,450.00</strong></span>
                   </div>
                 </div>
               </div>
 
-              {/* Expense Category Breakdown Chart */}
+              {/* Monochromatic Expense Distribution */}
               <div className="lg:col-span-5 glass-card p-5 rounded-2xl border border-white/[0.08] space-y-4">
-                <div className="flex items-center gap-2">
-                  <PieChart className="text-[#F3D270]" size={16} />
-                  <h4 className="text-xs font-bold text-white uppercase tracking-wider">
-                    {language === 'en' ? 'Operating Expense Distribution' : 'Distribución Gastos Operativos'}
-                  </h4>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Layers className="text-[#F3D270]" size={16} />
+                    <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+                      {language === 'en' ? 'Operating Expense Breakdown' : 'Desglose de Gastos Operativos'}
+                    </h4>
+                  </div>
+                  <span className="text-[10px] text-white/40 font-mono">QBO Ledger</span>
                 </div>
 
-                <div className="space-y-2.5 pt-1">
+                <div className="space-y-3 pt-1">
                   {propertyPnlData.operating_expenses.map((exp, idx) => {
                     const pct = ((exp.amount / totalOperatingExp) * 100).toFixed(1);
                     return (
                       <div key={idx} className="space-y-1">
-                        <div className="flex items-center justify-between text-[11px]">
-                          <span className="text-white/80 font-medium flex items-center gap-1.5">
-                            <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: exp.color }} />
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-white/80 font-medium">
                             {exp.category}
                           </span>
-                          <div className="font-mono text-white/90">
-                            ${exp.amount.toLocaleString()} <span className="text-white/40">({pct}%)</span>
-                          </div>
+                          <span className="font-mono text-white/90">
+                            ${exp.amount.toLocaleString()} <span className="text-white/40 text-[10px]">({pct}%)</span>
+                          </span>
                         </div>
+                        {/* Monochromatic Gold / Slate Bar */}
                         <div className="w-full h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
                           <div
                             className="h-full rounded-full transition-all duration-500"
-                            style={{ width: `${pct}%`, backgroundColor: exp.color }}
+                            style={{ width: `${pct}%`, backgroundColor: exp.shade }}
                           />
                         </div>
                       </div>
@@ -794,7 +806,7 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
               ))}
               <div className="flex items-center justify-between text-xs font-bold pt-2 border-t border-white/[0.06] text-white">
                 <span>Total Operating Income (Gross Revenue)</span>
-                <span className="text-emerald-400 font-mono">
+                <span className="text-[#F3D270] font-mono">
                   ${totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                 </span>
               </div>
@@ -802,7 +814,7 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
 
             {/* Operating Expenses Section */}
             <div className="space-y-3">
-              <div className="flex items-center justify-between text-xs font-bold text-amber-300 uppercase tracking-wider pb-1 border-b border-amber-300/20">
+              <div className="flex items-center justify-between text-xs font-bold text-white/80 uppercase tracking-wider pb-1 border-b border-white/[0.1]">
                 <span>2. Operating & CAM Expenses (From QBO)</span>
                 <span>Amount (USD)</span>
               </div>
@@ -814,7 +826,7 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
               ))}
               <div className="flex items-center justify-between text-xs font-bold pt-2 border-t border-white/[0.06] text-white">
                 <span>Total Operating Expenses</span>
-                <span className="text-amber-300 font-mono">
+                <span className="text-white/80 font-mono">
                   ${totalOperatingExp.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                 </span>
               </div>
@@ -833,7 +845,7 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
 
             {/* Capital & Non-Recoverables */}
             <div className="space-y-3">
-              <div className="flex items-center justify-between text-xs font-bold text-rose-300 uppercase tracking-wider pb-1 border-b border-rose-300/20">
+              <div className="flex items-center justify-between text-xs font-bold text-white/60 uppercase tracking-wider pb-1 border-b border-white/[0.1]">
                 <span>3. Non-Recoverable Overhead & Capital Expenditures</span>
                 <span>Amount (USD)</span>
               </div>
@@ -849,14 +861,14 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* REPORT: CAM RECONCILIATION (WITH VISUAL COMPARATIVE CHARTS)               */}
+      {/* REPORT: CAM RECONCILIATION (SOBER DUAL-PILLAR COMPARATIVE GRAPH)          */}
       {/* ========================================================================= */}
       {activeReport === 'CAM_RECONCILIATION' && (
         <div className="space-y-6">
           {/* Visual Analytics Charts */}
           {showCharts && (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-              {/* CAM Allocation vs Billed Comparison Bar Chart */}
+              {/* CAM Allocation vs Billed Comparison Histogram */}
               <div className="lg:col-span-8 glass-card p-5 rounded-2xl border border-white/[0.08] space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -865,12 +877,12 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
                       {language === 'en' ? 'Actual CAM Share vs Billed Collections (Annual)' : 'CAM Real Asignado vs Facturado Anual'}
                     </h4>
                   </div>
-                  <div className="flex items-center gap-3 text-[10px]">
-                    <span className="flex items-center gap-1 text-[#F3D270]">
-                      <span className="w-2.5 h-2.5 rounded bg-[#D4AF37]" /> Actual Allocated
+                  <div className="flex items-center gap-4 text-[10px]">
+                    <span className="flex items-center gap-1.5 text-[#F3D270]">
+                      <span className="w-2.5 h-2.5 rounded-sm bg-[#D4AF37]" /> Actual Allocated
                     </span>
-                    <span className="flex items-center gap-1 text-white/60">
-                      <span className="w-2.5 h-2.5 rounded bg-white/30" /> Monthly Billed
+                    <span className="flex items-center gap-1.5 text-white/60">
+                      <span className="w-2.5 h-2.5 rounded-sm bg-white/20" /> Monthly Billed
                     </span>
                   </div>
                 </div>
@@ -888,7 +900,7 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
                             <span className="font-bold text-white">{item.suite}</span>{' '}
                             <span className="text-white/50 text-[11px]">({item.tenant})</span>
                           </div>
-                          <div className="font-mono text-amber-300 font-bold text-xs flex items-center gap-1">
+                          <div className="font-mono text-[#F3D270] font-bold text-xs flex items-center gap-1">
                             <ArrowUpRight size={12} />
                             +${item.adjustment.toLocaleString('en-US', { minimumFractionDigits: 2 })} Due
                           </div>
@@ -896,7 +908,7 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
 
                         {/* Dual Bar Representation */}
                         <div className="space-y-1">
-                          <div className="w-full h-3 rounded-md bg-white/[0.04] overflow-hidden flex items-center">
+                          <div className="w-full h-2.5 rounded-md bg-white/[0.04] overflow-hidden flex items-center">
                             <div
                               className="h-full bg-gradient-to-r from-[#D4AF37] to-[#F3D270] rounded-md transition-all duration-500"
                               style={{ width: `${allocatedWidth}%` }}
@@ -905,9 +917,9 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
                               ${item.allocated_cam.toLocaleString()}
                             </span>
                           </div>
-                          <div className="w-full h-2.5 rounded-md bg-white/[0.04] overflow-hidden flex items-center">
+                          <div className="w-full h-2 rounded-md bg-white/[0.04] overflow-hidden flex items-center">
                             <div
-                              className="h-full bg-white/40 rounded-md transition-all duration-500"
+                              className="h-full bg-white/20 rounded-md transition-all duration-500"
                               style={{ width: `${billedWidth}%` }}
                             />
                             <span className="text-[9px] text-white/40 ml-2 font-mono">
@@ -933,31 +945,31 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
                   <div className="space-y-3">
                     <div>
                       <div className="flex justify-between text-xs mb-1">
-                        <span className="text-emerald-400 font-semibold">General Recoverable (78%)</span>
+                        <span className="text-[#F3D270] font-semibold">General Recoverable (78%)</span>
                         <span className="font-mono text-white">$124,800</span>
                       </div>
                       <div className="w-full h-2 rounded-full bg-white/[0.06] overflow-hidden">
-                        <div className="h-full bg-emerald-400 rounded-full w-[78%]" />
+                        <div className="h-full bg-[#D4AF37] rounded-full w-[78%]" />
                       </div>
                     </div>
 
                     <div>
                       <div className="flex justify-between text-xs mb-1">
-                        <span className="text-amber-300 font-semibold">Lease-Specific (14%)</span>
+                        <span className="text-white/80 font-semibold">Lease-Specific (14%)</span>
                         <span className="font-mono text-white">$22,400</span>
                       </div>
                       <div className="w-full h-2 rounded-full bg-white/[0.06] overflow-hidden">
-                        <div className="h-full bg-amber-400 rounded-full w-[14%]" />
+                        <div className="h-full bg-white/40 rounded-full w-[14%]" />
                       </div>
                     </div>
 
                     <div>
                       <div className="flex justify-between text-xs mb-1">
-                        <span className="text-rose-400 font-semibold">Non-Recoverable (8%)</span>
+                        <span className="text-white/50 font-semibold">Non-Recoverable (8%)</span>
                         <span className="font-mono text-white">$12,950</span>
                       </div>
                       <div className="w-full h-2 rounded-full bg-white/[0.06] overflow-hidden">
-                        <div className="h-full bg-rose-400 rounded-full w-[8%]" />
+                        <div className="h-full bg-white/20 rounded-full w-[8%]" />
                       </div>
                     </div>
                   </div>
@@ -992,33 +1004,33 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
                       Suite 200 (Circle City Tech Labs)
                     </td>
                     <td className="py-3.5 px-6 font-mono text-white/80">2,400</td>
-                    <td className="py-3.5 px-6 font-bold text-emerald-400">35.29%</td>
+                    <td className="py-3.5 px-6 font-bold text-[#F3D270]">35.29%</td>
                     <td className="py-3.5 px-6 font-mono text-white">$29,740.50</td>
                     <td className="py-3.5 px-6 font-bold font-mono text-white">$10,495.42</td>
                     <td className="py-3.5 px-6 font-mono text-white/80">$3,840.00</td>
-                    <td className="py-3.5 px-6 text-right font-extrabold font-mono text-amber-300">+$6,655.42</td>
+                    <td className="py-3.5 px-6 text-right font-extrabold font-mono text-[#F3D270]">+$6,655.42</td>
                   </tr>
                   <tr className="hover:bg-white/[0.02] transition-colors">
                     <td className="py-3.5 px-6 font-bold text-white">
                       Suite 104 (Indy Precision Logistics)
                     </td>
                     <td className="py-3.5 px-6 font-mono text-white/80">1,250</td>
-                    <td className="py-3.5 px-6 font-bold text-emerald-400">18.38%</td>
+                    <td className="py-3.5 px-6 font-bold text-[#F3D270]">18.38%</td>
                     <td className="py-3.5 px-6 font-mono text-white">$29,740.50</td>
                     <td className="py-3.5 px-6 font-bold font-mono text-white">$5,466.30</td>
                     <td className="py-3.5 px-6 font-mono text-white/80">$2,280.00</td>
-                    <td className="py-3.5 px-6 text-right font-extrabold font-mono text-amber-300">+$3,186.30</td>
+                    <td className="py-3.5 px-6 text-right font-extrabold font-mono text-[#F3D270]">+$3,186.30</td>
                   </tr>
                   <tr className="hover:bg-white/[0.02] transition-colors">
                     <td className="py-3.5 px-6 font-bold text-white">
                       Suite 108 (Midwest BioScience Innovations)
                     </td>
                     <td className="py-3.5 px-6 font-mono text-white/80">3,150</td>
-                    <td className="py-3.5 px-6 font-bold text-emerald-400">46.32%</td>
+                    <td className="py-3.5 px-6 font-bold text-[#F3D270]">46.32%</td>
                     <td className="py-3.5 px-6 font-mono text-white">$29,740.50</td>
                     <td className="py-3.5 px-6 font-bold font-mono text-white">$13,775.80</td>
                     <td className="py-3.5 px-6 font-mono text-white/80">$5,040.00</td>
-                    <td className="py-3.5 px-6 text-right font-extrabold font-mono text-amber-300">+$8,735.80</td>
+                    <td className="py-3.5 px-6 text-right font-extrabold font-mono text-[#F3D270]">+$8,735.80</td>
                   </tr>
                 </tbody>
               </table>
@@ -1028,7 +1040,7 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* REPORT: RENT ROLL (WITH PROPERTY REVENUE COMPARATIVE BARS)                */}
+      {/* REPORT: RENT ROLL (SOBER GOLD/SLATE BARS)                                 */}
       {/* ========================================================================= */}
       {activeReport === 'RENT_ROLL' && (
         <div className="space-y-4">
@@ -1048,7 +1060,7 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
             </div>
             <div className="p-3.5 rounded-xl bg-[#091322]/80 border border-white/[0.08]">
               <span className="text-[10px] text-white/40 uppercase font-semibold block">Annual Gross Potential</span>
-              <span className="text-lg font-bold text-emerald-400 mt-0.5 block">${(rentRollTotals.total * 12).toLocaleString()}</span>
+              <span className="text-lg font-bold text-white mt-0.5 block">${(rentRollTotals.total * 12).toLocaleString()}</span>
             </div>
           </div>
 
@@ -1062,7 +1074,7 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
                   </h4>
                   <span className="text-[10px] text-[#F3D270] font-semibold">Indianapolis Portfolio</span>
                 </div>
-                <div className="space-y-2 text-xs">
+                <div className="space-y-2.5 text-xs">
                   <div>
                     <div className="flex justify-between text-[11px] mb-1">
                       <span className="text-white/80">7898 Zionsville Rd Commercial</span>
@@ -1079,7 +1091,7 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
                       <span className="font-mono text-white">$16,470/mo</span>
                     </div>
                     <div className="w-full h-2 rounded-full bg-white/[0.06] overflow-hidden">
-                      <div className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full w-[60%]" />
+                      <div className="h-full bg-[#D4AF37] rounded-full w-[60%]" />
                     </div>
                   </div>
 
@@ -1089,7 +1101,7 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
                       <span className="font-mono text-white">$4,860/mo</span>
                     </div>
                     <div className="w-full h-2 rounded-full bg-white/[0.06] overflow-hidden">
-                      <div className="h-full bg-gradient-to-r from-blue-500 to-cyan-400 rounded-full w-[20%]" />
+                      <div className="h-full bg-white/40 rounded-full w-[20%]" />
                     </div>
                   </div>
                 </div>
@@ -1100,7 +1112,7 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
                   <h4 className="text-xs font-bold text-white uppercase tracking-wider">
                     {language === 'en' ? 'Rent vs CAM Revenue Share' : 'Distribución Renta Base vs CAM'}
                   </h4>
-                  <span className="text-[10px] text-emerald-400 font-semibold">89.4% Base / 10.6% CAM</span>
+                  <span className="text-[10px] text-[#F3D270] font-semibold">89.4% Base / 10.6% CAM</span>
                 </div>
                 <div className="flex items-center gap-3 pt-2">
                   <div className="flex-1 space-y-1">
@@ -1108,7 +1120,7 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
                       <span>Base Rental Revenue</span>
                       <span className="font-mono text-white font-bold">${rentRollTotals.base.toLocaleString()}</span>
                     </div>
-                    <div className="w-full h-3 rounded-full bg-white/[0.06] overflow-hidden">
+                    <div className="w-full h-2.5 rounded-full bg-white/[0.06] overflow-hidden">
                       <div className="h-full bg-gradient-to-r from-[#D4AF37] to-[#B89222] rounded-full w-[89%]" />
                     </div>
                   </div>
@@ -1119,8 +1131,8 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
                       <span>CAM Maintenance Pool</span>
                       <span className="font-mono text-[#F3D270] font-bold">${rentRollTotals.cam.toLocaleString()}</span>
                     </div>
-                    <div className="w-full h-3 rounded-full bg-white/[0.06] overflow-hidden">
-                      <div className="h-full bg-emerald-400 rounded-full w-[11%]" />
+                    <div className="w-full h-2 rounded-full bg-white/[0.06] overflow-hidden">
+                      <div className="h-full bg-white/40 rounded-full w-[11%]" />
                     </div>
                   </div>
                 </div>
@@ -1163,11 +1175,11 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
                       </td>
                       <td className="py-3.5 px-6 text-right">
                         {row.status === 'OCCUPIED' ? (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/[0.08] text-white border border-white/[0.15]">
                             Occupied
                           </span>
                         ) : (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/[0.06] text-white/50">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/[0.04] text-white/40">
                             Available
                           </span>
                         )}
@@ -1182,7 +1194,7 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* REPORT: A/R AGING (WITH VISUAL AGING BUCKETS BARS)                         */}
+      {/* REPORT: A/R AGING (SOBER FINANCIAL BUCKETS)                               */}
       {/* ========================================================================= */}
       {activeReport === 'AR_AGING' && (
         <div className="space-y-4">
@@ -1195,29 +1207,29 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
                     {language === 'en' ? 'Accounts Receivable Aging Distribution' : 'Distribución Antigüedad de Cobro'}
                   </h4>
                 </div>
-                <span className="text-[11px] font-bold text-emerald-400">
-                  96.8% Collection Efficiency
+                <span className="text-[11px] font-bold text-white font-mono bg-white/[0.06] px-2.5 py-1 rounded-lg border border-white/[0.1]">
+                  96.8% Collection Rate
                 </span>
               </div>
 
-              {/* Progress bar of buckets */}
+              {/* Progress bar of buckets in Gold / Slate */}
               <div className="space-y-2">
-                <div className="w-full h-4 rounded-xl bg-white/[0.06] overflow-hidden flex">
-                  <div className="h-full bg-emerald-400 w-[72%]" title="Current (0-30 Days): $7,250" />
-                  <div className="h-full bg-amber-400 w-[28%]" title="31-60 Days: $2,850" />
-                  <div className="h-full bg-rose-500 w-[0%]" title="61-90+ Days: $0" />
+                <div className="w-full h-3 rounded-lg bg-white/[0.06] overflow-hidden flex">
+                  <div className="h-full bg-gradient-to-r from-[#D4AF37] to-[#F3D270] w-[72%]" title="Current (0-30 Days): $7,250" />
+                  <div className="h-full bg-white/30 w-[28%]" title="31-60 Days: $2,850" />
+                  <div className="h-full bg-white/10 w-[0%]" title="61-90+ Days: $0" />
                 </div>
                 <div className="flex items-center justify-between text-xs text-white/60 pt-1">
                   <span className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+                    <span className="w-2 h-2 rounded-full bg-[#D4AF37]" />
                     Current (0-30d): <strong className="text-white font-mono">$7,250 (71.8%)</strong>
                   </span>
                   <span className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
-                    31-60 Days: <strong className="text-amber-300 font-mono">$2,850 (28.2%)</strong>
+                    <span className="w-2 h-2 rounded-full bg-white/40" />
+                    31-60 Days: <strong className="text-white/80 font-mono">$2,850 (28.2%)</strong>
                   </span>
                   <span className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
+                    <span className="w-2 h-2 rounded-full bg-white/10" />
                     90+ Days: <strong className="text-white/40 font-mono">$0.00 (0.0%)</strong>
                   </span>
                 </div>
@@ -1252,22 +1264,22 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
                       <td className="py-4 px-6 text-right font-mono text-white/80">
                         ${row.current.toFixed(2)}
                       </td>
-                      <td className="py-4 px-6 text-right font-mono text-amber-300">
+                      <td className="py-4 px-6 text-right font-mono text-white/60">
                         ${row.days_30.toFixed(2)}
                       </td>
-                      <td className="py-4 px-6 text-right font-mono text-white/40">
+                      <td className="py-4 px-6 text-right font-mono text-white/30">
                         ${row.days_60.toFixed(2)}
                       </td>
-                      <td className="py-4 px-6 text-right font-mono text-white/40">
+                      <td className="py-4 px-6 text-right font-mono text-white/30">
                         ${row.days_90_plus.toFixed(2)}
                       </td>
                       <td className="py-4 px-6 text-right">
                         {row.status === 'CURRENT' ? (
-                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/[0.08] text-white border border-white/[0.15]">
                             Current
                           </span>
                         ) : (
-                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#D4AF37]/15 text-[#F3D270] border border-[#D4AF37]/30">
                             30+ Days Past Due
                           </span>
                         )}
@@ -1282,7 +1294,7 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* REPORT: OCCUPANCY & VACANCY (WITH COMPARATIVE OCCUPANCY BARS)              */}
+      {/* REPORT: OCCUPANCY & VACANCY (EXECUTIVE MONOCHROME BARS)                    */}
       {/* ========================================================================= */}
       {activeReport === 'OCCUPANCY_VACANCY' && (
         <div className="space-y-4">
@@ -1293,7 +1305,7 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
                   <h4 className="text-xs font-bold text-white uppercase tracking-wider">
                     {language === 'en' ? 'Physical vs Economic Occupancy' : 'Ocupación Física vs Económica'}
                   </h4>
-                  <span className="text-[11px] text-emerald-400 font-bold">94.2% Portfolio Average</span>
+                  <span className="text-[11px] text-[#F3D270] font-bold">94.2% Portfolio Average</span>
                 </div>
 
                 <div className="space-y-3 pt-1">
@@ -1301,11 +1313,11 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
                     <div key={idx} className="space-y-1">
                       <div className="flex justify-between text-xs">
                         <span className="text-white/80 font-medium">{item.property}</span>
-                        <span className="font-mono text-emerald-400 font-bold">{item.physical_occupancy}%</span>
+                        <span className="font-mono text-[#F3D270] font-bold">{item.physical_occupancy}%</span>
                       </div>
-                      <div className="w-full h-2.5 rounded-full bg-white/[0.06] overflow-hidden flex gap-0.5">
+                      <div className="w-full h-2 rounded-full bg-white/[0.06] overflow-hidden flex gap-0.5">
                         <div
-                          className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full"
+                          className="h-full bg-gradient-to-r from-[#D4AF37] to-[#F3D270] rounded-full"
                           style={{ width: `${item.physical_occupancy}%` }}
                         />
                       </div>
@@ -1322,8 +1334,8 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
                   <p className="text-xs text-white/50">
                     Calculated opportunity cost across unleased square footage in Marion County.
                   </p>
-                  <div className="text-2xl font-extrabold text-rose-400 font-mono mt-3">
-                    -$16,450.00 / month
+                  <div className="text-2xl font-extrabold text-white font-mono mt-3">
+                    -$16,450.00 / mo
                   </div>
                 </div>
 
@@ -1360,17 +1372,17 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
                       </td>
                       <td className="py-4 px-6">
                         <div className="flex items-center gap-2">
-                          <span className="font-bold text-emerald-400">{row.physical_occupancy}%</span>
-                          <div className="w-16 h-1.5 rounded-full bg-white/[0.08] overflow-hidden">
+                          <span className="font-bold text-[#F3D270]">{row.physical_occupancy}%</span>
+                          <div className="w-16 h-1 rounded-full bg-white/[0.08] overflow-hidden">
                             <div
-                              className="h-full bg-emerald-400 rounded-full"
+                              className="h-full bg-[#D4AF37] rounded-full"
                               style={{ width: `${row.physical_occupancy}%` }}
                             />
                           </div>
                         </div>
                       </td>
                       <td className="py-4 px-6 font-bold text-white">{row.economic_occupancy}%</td>
-                      <td className="py-4 px-6 text-right font-bold font-mono text-rose-400">
+                      <td className="py-4 px-6 text-right font-bold font-mono text-white/70">
                         -${row.monthly_vacancy_loss.toFixed(2)}
                       </td>
                     </tr>
@@ -1383,7 +1395,7 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* REPORT: LEASE EXPIRATIONS (WITH QUARTERLY TIMELINE)                       */}
+      {/* REPORT: LEASE EXPIRATIONS (SOBER QUARTERLY TIMELINE)                      */}
       {/* ========================================================================= */}
       {activeReport === 'LEASE_EXPIRATION' && (
         <div className="space-y-4">
@@ -1393,28 +1405,28 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
                 <h4 className="text-xs font-bold text-white uppercase tracking-wider">
                   {language === 'en' ? 'Upcoming Lease Expirations by Quarter' : 'Vencimientos de Contratos por Trimestre'}
                 </h4>
-                <span className="text-[11px] text-amber-300 font-semibold">FY 2027 Expirations</span>
+                <span className="text-[11px] text-[#F3D270] font-semibold">FY 2027 Expirations</span>
               </div>
 
               <div className="grid grid-cols-4 gap-3 pt-1">
                 <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] text-center">
                   <span className="text-[10px] text-white/40 uppercase font-semibold">Q1 2027</span>
-                  <div className="text-base font-bold text-rose-400 mt-1">1 Lease</div>
+                  <div className="text-base font-bold text-[#F3D270] mt-1">1 Lease</div>
                   <span className="text-[10px] text-white/50">$2,850/mo</span>
                 </div>
                 <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] text-center">
                   <span className="text-[10px] text-white/40 uppercase font-semibold">Q2 2027</span>
-                  <div className="text-base font-bold text-amber-300 mt-1">1 Lease</div>
+                  <div className="text-base font-bold text-white mt-1">1 Lease</div>
                   <span className="text-[10px] text-white/50">$4,500/mo</span>
                 </div>
                 <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] text-center">
                   <span className="text-[10px] text-white/40 uppercase font-semibold">Q3 2027</span>
-                  <div className="text-base font-bold text-white mt-1">1 Lease</div>
+                  <div className="text-base font-bold text-white/80 mt-1">1 Lease</div>
                   <span className="text-[10px] text-white/50">$4,400/mo</span>
                 </div>
                 <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] text-center">
                   <span className="text-[10px] text-white/40 uppercase font-semibold">Q4 2027</span>
-                  <div className="text-base font-bold text-emerald-400 mt-1">2 Leases</div>
+                  <div className="text-base font-bold text-white/60 mt-1">2 Leases</div>
                   <span className="text-[10px] text-white/50">$5,700/mo</span>
                 </div>
               </div>
@@ -1447,15 +1459,7 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
                       <td className="py-4 px-6 font-mono text-white font-bold">${row.monthly_rent.toFixed(2)}</td>
                       <td className="py-4 px-6 font-mono text-white">{row.expiration_date}</td>
                       <td className="py-4 px-6">
-                        <span
-                          className={`font-bold ${
-                            row.urgency === 'IMMEDIATE'
-                              ? 'text-rose-400'
-                              : row.urgency === 'HIGH'
-                              ? 'text-amber-400'
-                              : 'text-white/60'
-                          }`}
-                        >
+                        <span className="font-bold text-white/70">
                           {row.days_remaining} days
                         </span>
                       </td>
@@ -1486,7 +1490,7 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
             </div>
             <div className="text-right">
               <span className="text-[11px] text-white/50 block">Current Balance</span>
-              <span className="text-xl font-extrabold text-amber-300">$248.50</span>
+              <span className="text-xl font-extrabold text-[#F3D270]">$248.50</span>
               <span className="text-[10px] text-white/40 block">Net 30 True-up</span>
             </div>
           </div>
@@ -1516,7 +1520,7 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
                       <td className="py-3.5 px-6 text-right font-mono text-white">
                         {row.charges > 0 ? `$${row.charges.toFixed(2)}` : '-'}
                       </td>
-                      <td className="py-3.5 px-6 text-right font-mono text-emerald-400">
+                      <td className="py-3.5 px-6 text-right font-mono text-white/80">
                         {row.credits > 0 ? `$${row.credits.toFixed(2)}` : '-'}
                       </td>
                       <td className="py-3.5 px-6 text-right font-bold font-mono text-white">
