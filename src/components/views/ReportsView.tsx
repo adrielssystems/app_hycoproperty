@@ -848,13 +848,13 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* 2. REPORT: CAM RECONCILIATION (SOBER DUAL-PILLAR COMPARATIVE GRAPH)       */}
+      {/* 2. REPORT: CAM RECONCILIATION (EXECUTIVE DUAL-PILLAR VERTICAL HISTOGRAM) */}
       {/* ========================================================================= */}
       {activeReport === 'CAM_RECONCILIATION' && (
         <div className="space-y-6">
           {showCharts && (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-              {/* CAM Allocation vs Billed Comparison Histogram */}
+              {/* CAM Allocation vs Billed Comparison - Executive Vertical Dual-Pillar Histogram */}
               <div className="lg:col-span-8 glass-card p-5 rounded-2xl border border-white/[0.08] space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -864,103 +864,139 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
                     </h4>
                   </div>
                   <div className="flex items-center gap-4 text-[10px]">
-                    <span className="flex items-center gap-1.5 text-[#F3D270]">
+                    <span className="flex items-center gap-1.5 text-[#F3D270] font-medium">
                       <span className="w-2.5 h-2.5 rounded-sm bg-[#D4AF37]" /> Actual Allocated
                     </span>
-                    <span className="flex items-center gap-1.5 text-white/60">
+                    <span className="flex items-center gap-1.5 text-white/60 font-medium">
                       <span className="w-2.5 h-2.5 rounded-sm bg-white/20" /> Monthly Billed
                     </span>
                   </div>
                 </div>
 
-                <div className="space-y-4 pt-2">
-                  {camComparisonData.map((item, i) => {
-                    const maxVal = 15000;
-                    const allocatedWidth = (item.allocated_cam / maxVal) * 100;
-                    const billedWidth = (item.billed_cam / maxVal) * 100;
+                <div className="pt-2">
+                  <div className="h-48 w-full flex items-end justify-around gap-6 px-4 pb-4 border-b border-white/[0.06] relative">
+                    {/* Background Grid Lines */}
+                    <div className="absolute inset-x-0 top-6 border-b border-white/[0.04] pointer-events-none" />
+                    <div className="absolute inset-x-0 top-18 border-b border-white/[0.04] pointer-events-none" />
+                    <div className="absolute inset-x-0 top-30 border-b border-white/[0.04] pointer-events-none" />
 
-                    return (
-                      <div key={i} className="space-y-1.5">
-                        <div className="flex justify-between text-xs">
-                          <div>
-                            <span className="font-bold text-white">{item.suite}</span>{' '}
-                            <span className="text-white/50 text-[11px]">({item.tenant})</span>
-                          </div>
-                          <div className="font-mono text-[#F3D270] font-bold text-xs flex items-center gap-1">
-                            <ArrowUpRight size={12} />
-                            +${item.adjustment.toLocaleString('en-US', { minimumFractionDigits: 2 })} Due
-                          </div>
-                        </div>
+                    {camComparisonData.map((item, i) => {
+                      const maxVal = 15000;
+                      const allocatedHeight = Math.min(100, Math.round((item.allocated_cam / maxVal) * 100));
+                      const billedHeight = Math.min(100, Math.round((item.billed_cam / maxVal) * 100));
 
-                        <div className="space-y-1">
-                          <div className="w-full h-2.5 rounded-md bg-white/[0.04] overflow-hidden flex items-center">
-                            <div
-                              className="h-full bg-gradient-to-r from-[#D4AF37] to-[#F3D270] rounded-md transition-all duration-500"
-                              style={{ width: `${allocatedWidth}%` }}
-                            />
-                            <span className="text-[10px] text-white/70 ml-2 font-mono">
-                              ${item.allocated_cam.toLocaleString()}
+                      return (
+                        <div key={i} className="flex-1 flex flex-col items-center gap-2 group max-w-[150px]">
+                          {/* Adjustment Badge on top */}
+                          <div className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#D4AF37]/15 text-[#F3D270] border border-[#D4AF37]/30 shadow-sm">
+                            <ArrowUpRight size={11} />
+                            +${item.adjustment.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} Due
+                          </div>
+
+                          {/* Amounts Row */}
+                          <div className="flex items-center justify-center gap-3 text-[10px] font-mono">
+                            <span className="text-[#F3D270] font-bold">
+                              ${(item.allocated_cam / 1000).toFixed(1)}k
+                            </span>
+                            <span className="text-white/40">
+                              ${(item.billed_cam / 1000).toFixed(1)}k
                             </span>
                           </div>
-                          <div className="w-full h-2 rounded-md bg-white/[0.04] overflow-hidden flex items-center">
+
+                          {/* Dual Pillars */}
+                          <div className="w-full flex items-end justify-center gap-2 h-24">
+                            {/* Allocated Pillar (Gold) */}
                             <div
-                              className="h-full bg-white/20 rounded-md transition-all duration-500"
-                              style={{ width: `${billedWidth}%` }}
+                              className="w-7 rounded-t-md bg-gradient-to-t from-[#B89222] to-[#F3D270] shadow-md transition-all duration-500 group-hover:brightness-110 cursor-pointer"
+                              style={{ height: `${allocatedHeight}%` }}
+                              title={`Allocated: $${item.allocated_cam.toLocaleString()}`}
                             />
-                            <span className="text-[9px] text-white/40 ml-2 font-mono">
-                              ${item.billed_cam.toLocaleString()}
-                            </span>
+                            {/* Billed Pillar (Slate) */}
+                            <div
+                              className="w-7 rounded-t-md bg-white/20 transition-all duration-500 group-hover:bg-white/30 cursor-pointer"
+                              style={{ height: `${billedHeight}%` }}
+                              title={`Billed: $${item.billed_cam.toLocaleString()}`}
+                            />
+                          </div>
+
+                          {/* Suite & Tenant Label */}
+                          <div className="text-center">
+                            <div className="text-[11px] font-bold text-white group-hover:text-[#F3D270] transition-colors">
+                              {item.suite}
+                            </div>
+                            <div className="text-[9px] text-white/50 truncate max-w-[105px]">
+                              {item.tenant}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 
               {/* Expense Pool Composition Card */}
               <div className="lg:col-span-4 glass-card p-5 rounded-2xl border border-white/[0.08] flex flex-col justify-between space-y-4">
-                <div>
-                  <div className="flex items-center gap-2 mb-3">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
                     <Layers className="text-[#F3D270]" size={16} />
                     <h4 className="text-xs font-bold text-white uppercase tracking-wider">
                       {language === 'en' ? 'Building Pool Recovery' : 'Composición del Fondo'}
                     </h4>
                   </div>
-                  <div className="space-y-3">
-                    <div>
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="text-[#F3D270] font-semibold">General Recoverable (78%)</span>
-                        <span className="font-mono text-white">$124,800</span>
+
+                  {/* Proportional Segmented Bar */}
+                  <div className="space-y-1.5">
+                    <div className="h-3 w-full rounded-lg overflow-hidden flex bg-white/[0.04] p-0.5 gap-0.5 border border-white/[0.08]">
+                      <div className="h-full bg-[#D4AF37] rounded-l-sm" style={{ width: '78%' }} title="General Recoverable: 78%" />
+                      <div className="h-full bg-white/40" style={{ width: '14%' }} title="Lease-Specific: 14%" />
+                      <div className="h-full bg-white/20 rounded-r-sm" style={{ width: '8%' }} title="Non-Recoverable: 8%" />
+                    </div>
+                    <div className="flex justify-between text-[9px] text-white/40 font-mono">
+                      <span>78% Recoverable</span>
+                      <span>14% Specific</span>
+                      <span>8% Owner</span>
+                    </div>
+                  </div>
+
+                  {/* Stat Rows */}
+                  <div className="space-y-2.5 pt-1">
+                    <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-[#D4AF37]" />
+                        <span className="text-xs text-white/80 font-medium">General Recoverable</span>
                       </div>
-                      <div className="w-full h-2 rounded-full bg-white/[0.06] overflow-hidden">
-                        <div className="h-full bg-[#D4AF37] rounded-full w-[78%]" />
+                      <div className="text-right">
+                        <span className="text-xs font-mono font-bold text-[#F3D270] block">$124,800</span>
+                        <span className="text-[9px] text-white/40 font-mono">78% of Total</span>
                       </div>
                     </div>
 
-                    <div>
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="text-white/80 font-semibold">Lease-Specific (14%)</span>
-                        <span className="font-mono text-white">$22,400</span>
+                    <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-white/40" />
+                        <span className="text-xs text-white/80 font-medium">Lease-Specific</span>
                       </div>
-                      <div className="w-full h-2 rounded-full bg-white/[0.06] overflow-hidden">
-                        <div className="h-full bg-white/40 rounded-full w-[14%]" />
+                      <div className="text-right">
+                        <span className="text-xs font-mono font-bold text-white block">$22,400</span>
+                        <span className="text-[9px] text-white/40 font-mono">14% of Total</span>
                       </div>
                     </div>
 
-                    <div>
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="text-white/50 font-semibold">Non-Recoverable (8%)</span>
-                        <span className="font-mono text-white">$12,950</span>
+                    <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-white/20" />
+                        <span className="text-xs text-white/80 font-medium">Non-Recoverable</span>
                       </div>
-                      <div className="w-full h-2 rounded-full bg-white/[0.06] overflow-hidden">
-                        <div className="h-full bg-white/20 rounded-full w-[8%]" />
+                      <div className="text-right">
+                        <span className="text-xs font-mono font-bold text-white/60 block">$12,950</span>
+                        <span className="text-[9px] text-white/40 font-mono">8% Owner Absorption</span>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] text-[11px] text-white/50">
+                <div className="p-3 rounded-xl bg-[#D4AF37]/[0.06] border border-[#D4AF37]/25 text-[11px] text-white/70">
                   <span className="text-[#F3D270] font-bold block mb-0.5">Golden Rule Active:</span>
                   Lease-level contract stipulations override account recovery defaults automatically.
                 </div>
