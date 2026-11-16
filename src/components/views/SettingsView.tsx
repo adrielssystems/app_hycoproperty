@@ -13,11 +13,13 @@ import {
   DollarSign,
   Wrench,
   Check,
+  Link2,
 } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { useLanguage } from '@/context/LanguageContext';
+import { IntegrationTab } from '@/components/settings/IntegrationTab';
 
 interface UserItem {
   id: number;
@@ -39,8 +41,20 @@ const AVAILABLE_SECTIONS = [
 
 export const SettingsView: React.FC = () => {
   const { language } = useLanguage();
+  const [activeTab, setActiveTab] = useState<'users' | 'integrations'>('users');
   const [users, setUsers] = useState<UserItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Sync tab with URL query parameter
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get('tab');
+      if (tabParam === 'integrations') {
+        setActiveTab('integrations');
+      }
+    }
+  }, []);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -168,8 +182,38 @@ export const SettingsView: React.FC = () => {
 
   return (
     <div className="space-y-6 w-full">
-      {/* USER MANAGEMENT */}
-      <div className="space-y-4">
+      {/* EXECUTIVE SUB-TABS: USERS vs INTEGRATIONS */}
+      <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-[#0B1526]/80 border border-white/[0.08] backdrop-blur-xl w-fit">
+        <button
+          type="button"
+          onClick={() => setActiveTab('users')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            activeTab === 'users'
+              ? 'bg-gradient-to-r from-[#F3D270] via-[#D4AF37] to-[#B89222] text-[#070D18] shadow-md shadow-[#D4AF37]/20'
+              : 'text-white/60 hover:text-white hover:bg-white/[0.04]'
+          }`}
+        >
+          <Users size={14} />
+          <span>{language === 'en' ? 'User Management & Roles' : 'Gestión de Usuarios y Roles'}</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('integrations')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            activeTab === 'integrations'
+              ? 'bg-gradient-to-r from-[#F3D270] via-[#D4AF37] to-[#B89222] text-[#070D18] shadow-md shadow-[#D4AF37]/20'
+              : 'text-white/60 hover:text-white hover:bg-white/[0.04]'
+          }`}
+        >
+          <Link2 size={14} />
+          <span>{language === 'en' ? 'Integrations & QuickBooks Online' : 'Integraciones y QuickBooks Online'}</span>
+        </button>
+      </div>
+
+      {/* SUB-TAB 1: USER MANAGEMENT */}
+      {activeTab === 'users' && (
+        <div className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h2 className="text-base font-bold text-white tracking-tight">
@@ -334,6 +378,10 @@ export const SettingsView: React.FC = () => {
             )}
           </div>
         </div>
+      )}
+
+      {/* SUB-TAB 2: QUICKBOOKS ONLINE INTEGRATION */}
+      {activeTab === 'integrations' && <IntegrationTab />}
 
       {/* NEW / EDIT USER MODAL */}
       <Modal

@@ -105,4 +105,19 @@ CREATE TABLE IF NOT EXISTS lease_cam_overrides (
   UNIQUE(unit_id, account_mapping_id)
 );
 
+-- Settings & Integrations Table (QuickBooks Online OAuth 2.0 & Service Mappings)
+CREATE TABLE IF NOT EXISTS settings_integrations (
+  id SERIAL PRIMARY KEY,
+  provider VARCHAR(50) UNIQUE NOT NULL DEFAULT 'quickbooks',
+  is_connected BOOLEAN DEFAULT FALSE,
+  realm_id VARCHAR(100),
+  access_token TEXT,
+  refresh_token TEXT,
+  token_expires_at TIMESTAMP WITH TIME ZONE,
+  service_config JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+
 

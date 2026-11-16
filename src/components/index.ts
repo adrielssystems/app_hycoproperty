@@ -29,5 +29,8 @@ export * from './properties/MediaUploadProcessor';
 export * from './InvoicesTable';
 export * from './TicketsList';
 
+// Settings & Integrations
+export * from './settings/IntegrationTab';
+
 // Dedicated Full-Screen Views
 export * from './views';

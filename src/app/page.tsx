@@ -107,6 +107,13 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const viewParam = params.get('view');
+      if (viewParam) {
+        setCurrentTab(viewParam);
+      }
+    }
     loadDashboardData();
   }, []);
 

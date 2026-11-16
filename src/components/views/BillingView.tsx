@@ -23,6 +23,7 @@ import {
   ArrowUpRight,
   ArrowDownLeft,
   Sparkles,
+  Link2,
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { NewExpenseModal } from '@/components/billing/NewExpenseModal';
@@ -765,10 +766,21 @@ export const BillingView: React.FC<BillingViewProps> = ({
               </select>
             </div>
 
-            <div className="text-xs text-white/50 text-right">
-              {language === 'en'
-                ? '43 Chart of Accounts Mappings • Real-time synchronization'
-                : '43 Mapeos del Catálogo de Cuentas • Sincronización en vivo'}
+            <div className="flex items-center gap-3">
+              <a
+                href="/?view=settings&tab=integrations"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#D4AF37]/15 text-[#F3D270] hover:bg-[#D4AF37]/25 border border-[#D4AF37]/30 transition-all cursor-pointer whitespace-nowrap shadow-sm shadow-[#D4AF37]/10"
+              >
+                <Link2 size={13} />
+                <span>{language === 'en' ? 'Manage QBO OAuth & Services' : 'Gestionar Conexión QBO y Servicios'}</span>
+                <ArrowUpRight size={13} />
+              </a>
+
+              <div className="text-xs text-white/50 text-right hidden sm:block">
+                {language === 'en'
+                  ? '43 Chart of Accounts Mappings'
+                  : '43 Mapeos del Catálogo'}
+              </div>
             </div>
           </div>
 

@@ -307,6 +307,29 @@ export async function initAndSeedDatabase() {
       }
     }
     console.log('QBO Account Mappings and CAM Recovery Rules initialized successfully!');
+
+    // Ensure settings_integrations table exists
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS settings_integrations (
+        id SERIAL PRIMARY KEY,
+        provider VARCHAR(50) UNIQUE NOT NULL DEFAULT 'quickbooks',
+        is_connected BOOLEAN DEFAULT FALSE,
+        realm_id VARCHAR(100),
+        access_token TEXT,
+        refresh_token TEXT,
+        token_expires_at TIMESTAMP WITH TIME ZONE,
+        service_config JSONB DEFAULT '{}'::jsonb,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
+    `);
+
+    // Ensure default quickbooks row exists
+    await pool.query(`
+      INSERT INTO settings_integrations (provider, is_connected, service_config)
+      VALUES ('quickbooks', FALSE, '{}'::jsonb)
+      ON CONFLICT (provider) DO NOTHING;
+    `);
   } catch (qboErr) {
     console.warn('QBO and CAM Seeding warning:', qboErr);
   }
