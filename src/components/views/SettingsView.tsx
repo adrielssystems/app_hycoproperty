@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useToast } from '@/context/ToastContext';
 import {
   Users,
   Key,
@@ -41,8 +42,19 @@ const AVAILABLE_SECTIONS = [
   { id: 'maintenance', labelEn: 'Helpdesk & Maintenance', labelEs: 'Mantenimiento', icon: Wrench },
 ];
 
-export const SettingsView: React.FC = () => {
+interface SettingsViewProps {
+  currentFilter?: string;
+  searchQuery?: string;
+  onRefresh?: () => void;
+}
+
+export const SettingsView: React.FC<SettingsViewProps> = ({
+  currentFilter = 'ALL',
+  searchQuery = '',
+  onRefresh,
+}) => {
   const { language } = useLanguage();
+  const { success: toastSuccess, error: toastError } = useToast();
   const [activeTab, setActiveTab] = useState<'users' | 'integrations'>('users');
   const [users, setUsers] = useState<UserItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -90,6 +102,22 @@ export const SettingsView: React.FC = () => {
   useEffect(() => {
     fetchUsers();
   }, []);
+
+  // Filter users by role pill and search query
+  const filteredUsers = useMemo(() => {
+    return users.filter((u) => {
+      if (currentFilter && currentFilter !== 'ALL' && u.role !== currentFilter) {
+        return false;
+      }
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        const matchName = u.name?.toLowerCase().includes(q);
+        const matchEmail = u.email?.toLowerCase().includes(q);
+        if (!matchName && !matchEmail) return false;
+      }
+      return true;
+    });
+  }, [users, currentFilter, searchQuery]);
 
   const openNewUserModal = () => {
     setEditingUser(null);
@@ -170,15 +198,17 @@ export const SettingsView: React.FC = () => {
   };
 
   const handleDeleteUser = async (u: UserItem) => {
-    if (!confirm(language === 'en' ? `Delete user ${u.name}?` : `¿Eliminar usuario ${u.name}?`)) return;
-
     try {
       const res = await fetch(`/api/users?id=${u.id}`, { method: 'DELETE' });
       const data = await res.json();
-      if (!res.ok || !data.success) throw new Error(data.message || 'Error');
+      if (!res.ok || !data.success) throw new Error(data.message || 'Error deleting user');
+      toastSuccess(
+        language === 'en' ? `User ${u.name} removed successfully.` : `Usuario ${u.name} eliminado con éxito.`,
+        language === 'en' ? 'User Deleted' : 'Usuario Eliminado'
+      );
       fetchUsers();
     } catch (err: any) {
-      alert(err.message || 'Error eliminando usuario');
+      toastError(err.message || 'Error deleting user', 'Delete Error');
     }
   };
 
@@ -255,7 +285,14 @@ export const SettingsView: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/[0.05]">
-                      {users.map((u) => (
+                      {filteredUsers.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="py-8 text-center text-white/40 text-xs">
+                            {language === 'en' ? 'No users matching criteria' : 'No hay usuarios que coincidan con la búsqueda'}
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredUsers.map((u) => (
                         <tr key={u.id} className="hover:bg-white/[0.02] transition-colors">
                           <td className="py-4 px-6">
                             <div className="flex items-center gap-3">
@@ -325,14 +362,19 @@ export const SettingsView: React.FC = () => {
                             </div>
                           </td>
                         </tr>
-                      ))}
+                      )))}
                     </tbody>
                   </table>
                 </div>
 
                 {/* Mobile Cards */}
                 <div className="block md:hidden p-3 space-y-3">
-                  {users.map((u) => (
+                  {filteredUsers.length === 0 ? (
+                    <div className="py-6 text-center text-white/40 text-xs">
+                      {language === 'en' ? 'No users matching criteria' : 'No hay usuarios que coincidan con la búsqueda'}
+                    </div>
+                  ) : (
+                    filteredUsers.map((u) => (
                     <div key={u.id} className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-3">
                       <div className="flex items-start justify-between">
                         <div>
@@ -374,7 +416,7 @@ export const SettingsView: React.FC = () => {
                         )}
                       </div>
                     </div>
-                  ))}
+                  )))}
                 </div>
               </>
             )}

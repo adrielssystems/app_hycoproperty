@@ -29,6 +29,7 @@ import {
   Activity,
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
+import { useToast } from '@/context/ToastContext';
 
 export type ReportType =
   | 'PROPERTY_PNL'
@@ -40,18 +41,27 @@ export type ReportType =
   | 'TENANT_LEDGER';
 
 interface ReportsViewProps {
+  currentFilter?: string;
+  searchQuery?: string;
   onRefresh?: () => void;
 }
 
-export const ReportsView: React.FC<ReportsViewProps> = () => {
+export const ReportsView: React.FC<ReportsViewProps> = ({
+  currentFilter = 'ALL',
+  searchQuery: externalSearchQuery = '',
+  onRefresh,
+}) => {
   const { language } = useLanguage();
+  const { success: toastSuccess, info: toastInfo } = useToast();
 
   const [activeReport, setActiveReport] = useState<ReportType>('PROPERTY_PNL');
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>('ALL');
   const [selectedYear, setSelectedYear] = useState<number>(2026);
   const [selectedTenantId, setSelectedTenantId] = useState<number>(1);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [internalSearchQuery, setInternalSearchQuery] = useState('');
   const [showCharts, setShowCharts] = useState(true);
+
+  const searchQuery = externalSearchQuery || internalSearchQuery;
 
   // 1. Rent Roll Master Data
   const rentRollData = [
@@ -487,10 +497,11 @@ export const ReportsView: React.FC<ReportsViewProps> = () => {
   };
 
   const handleExportCSV = () => {
-    alert(
+    toastSuccess(
       language === 'en'
         ? `Exporting ${activeReport} report data to CSV spreadsheet.`
-        : `Exportando reporte ${activeReport} a hoja de cálculo CSV.`
+        : `Exportando reporte ${activeReport} a hoja de cálculo CSV.`,
+      language === 'en' ? 'Report Export' : 'Exportar Reporte'
     );
   };
 

@@ -254,7 +254,11 @@ export default function DashboardPage() {
           )}
 
           {currentTab === 'reports' && (
-            <ReportsView onRefresh={loadDashboardData} />
+            <ReportsView
+              currentFilter={currentFilter}
+              searchQuery={searchQuery}
+              onRefresh={loadDashboardData}
+            />
           )}
 
           {currentTab === 'maintenance' && (
@@ -267,7 +271,11 @@ export default function DashboardPage() {
           )}
 
           {currentTab === 'settings' && (
-            <SettingsView />
+            <SettingsView
+              currentFilter={currentFilter}
+              searchQuery={searchQuery}
+              onRefresh={loadDashboardData}
+            />
           )}
         </main>
       </div>

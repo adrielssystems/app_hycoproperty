@@ -13,6 +13,7 @@ import {
   LayoutGrid,
   Settings,
   BarChart3,
+  Download,
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { useToast } from '@/context/ToastContext';
@@ -32,6 +33,8 @@ interface HeaderProps {
   isSyncing?: boolean;
   onRunDiagnostics?: () => void;
   onNavigateOverview?: () => void;
+  onNewUser?: () => void;
+  onExportReport?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -46,6 +49,8 @@ export const Header: React.FC<HeaderProps> = ({
   onTriggerSync,
   isSyncing = false,
   onNavigateOverview,
+  onNewUser,
+  onExportReport,
 }) => {
   const { t, language } = useLanguage();
   const { info: toastInfo, success: toastSuccess } = useToast();
@@ -78,6 +83,22 @@ export const Header: React.FC<HeaderProps> = ({
     { id: 'RECEIVED', label: language === 'en' ? 'Received' : 'Recibidos' },
     { id: 'ASSIGNED', label: language === 'en' ? 'Assigned' : 'Asignados' },
     { id: 'RESOLVED', label: language === 'en' ? 'Resolved' : 'Resueltos' },
+  ];
+
+  // Financial Reports portfolio / scope filters
+  const reportFilters = [
+    { id: 'ALL', label: language === 'en' ? 'All Portfolios' : 'Todo el Portafolio' },
+    { id: 'Commercial', label: language === 'en' ? 'Commercial' : 'Comercial' },
+    { id: 'Industrial', label: language === 'en' ? 'Industrial' : 'Industrial' },
+    { id: 'GAAP', label: language === 'en' ? 'GAAP Audited' : 'Auditado GAAP' },
+  ];
+
+  // Settings & Staff roles filters
+  const settingsFilters = [
+    { id: 'ALL', label: language === 'en' ? 'All Users' : 'Todos los Usuarios' },
+    { id: 'SUPER_ADMIN', label: 'Super Admin' },
+    { id: 'ADMIN', label: 'Admin' },
+    { id: 'EMPLOYEE', label: language === 'en' ? 'Employees' : 'Empleados' },
   ];
 
   const renderLogo = () => (
@@ -418,38 +439,134 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       )}
 
-      {/* Financial Reports Toolbar */}
+      {/* Financial Reports Toolbar (Standardized 2-Row Layout) */}
       {currentTab === 'reports' && (
-        <div className="flex items-center justify-between gap-4 w-full">
-          <div className="flex items-center gap-2.5 sm:gap-3">
-            {renderLogo()}
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <BarChart3 size={17} className="text-[#F3D270]" />
-              <span className="font-bold text-xs sm:text-base text-white tracking-tight whitespace-nowrap">
-                {language === 'en' ? 'Financial Reports' : 'Reportes Financieros'}
-              </span>
+        <div className="flex flex-col gap-2.5 lg:gap-4 w-full">
+          {/* Row 1: Logo + Title + Action Button + Utilities */}
+          <div className="flex items-center justify-between gap-2 w-full">
+            <div className="flex items-center gap-2 sm:gap-3">
+              {renderLogo()}
+              <div className="flex items-center gap-1.5 shrink-0">
+                <BarChart3 size={16} className="text-[#F3D270]" />
+                <span className="font-bold text-xs sm:text-base text-white tracking-tight whitespace-nowrap">
+                  {language === 'en' ? 'Financial Reports' : 'Reportes Financieros'}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  if (onExportReport) {
+                    onExportReport();
+                  } else {
+                    window.print();
+                  }
+                }}
+                className="flex items-center gap-1 px-2.5 sm:px-3.5 py-1.5 rounded-xl font-bold text-[11px] sm:text-xs text-[#070D18] bg-gradient-to-r from-[#F3D270] via-[#D4AF37] to-[#B89222] hover:opacity-95 transition-all shadow-md shadow-[#D4AF37]/20 whitespace-nowrap cursor-pointer shrink-0"
+              >
+                <Download size={13} strokeWidth={2.5} />
+                <span>{language === 'en' ? 'Export / Print' : 'Exportar / Imprimir'}</span>
+              </button>
+              {renderRightUtilities()}
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            {renderRightUtilities()}
+
+          {/* Row 2: Filter Pills & Search Bar */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 w-full">
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none w-full sm:w-auto">
+              {reportFilters.map((f) => {
+                const isActive = currentFilter === f.id;
+                return (
+                  <button
+                    key={f.id}
+                    onClick={() => onFilterChange(f.id)}
+                    className={`px-2.5 sm:px-3 py-1 rounded-full text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                      isActive
+                        ? 'bg-white text-[#080F1D] font-bold shadow-md'
+                        : 'bg-white/[0.04] text-white/60 hover:text-white hover:bg-white/[0.08] border border-white/[0.05]'
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="relative w-full sm:w-64">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => onSearchChange(e.target.value)}
+                placeholder={language === 'en' ? 'Search accounts, tenants...' : 'Buscar cuentas o inquilinos...'}
+                className="w-full pl-9 pr-3 py-1.5 rounded-xl glass-input text-xs text-white placeholder-white/30"
+              />
+            </div>
           </div>
         </div>
       )}
 
-      {/* Settings Toolbar */}
+      {/* Settings Toolbar (Standardized 2-Row Layout) */}
       {currentTab === 'settings' && (
-        <div className="flex items-center justify-between gap-4 w-full">
-          <div className="flex items-center gap-2.5 sm:gap-3">
-            {renderLogo()}
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <Settings size={17} className="text-[#F3D270]" />
-              <span className="font-bold text-xs sm:text-base text-white tracking-tight whitespace-nowrap">
-                {language === 'en' ? 'Settings & Staff Permissions' : 'Ajustes y Permisos de Usuarios'}
-              </span>
+        <div className="flex flex-col gap-2.5 lg:gap-4 w-full">
+          {/* Row 1: Logo + Title + Action Button + Utilities */}
+          <div className="flex items-center justify-between gap-2 w-full">
+            <div className="flex items-center gap-2 sm:gap-3">
+              {renderLogo()}
+              <div className="flex items-center gap-1.5 shrink-0">
+                <Settings size={16} className="text-[#F3D270]" />
+                <span className="font-bold text-xs sm:text-base text-white tracking-tight whitespace-nowrap">
+                  {language === 'en' ? 'Settings & Staff Permissions' : 'Ajustes y Permisos de Usuarios'}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {onNewUser && (
+                <button
+                  onClick={onNewUser}
+                  className="flex items-center gap-1 px-2.5 sm:px-3.5 py-1.5 rounded-xl font-bold text-[11px] sm:text-xs text-[#070D18] bg-gradient-to-r from-[#F3D270] via-[#D4AF37] to-[#B89222] hover:opacity-95 transition-all shadow-md shadow-[#D4AF37]/20 whitespace-nowrap cursor-pointer shrink-0"
+                >
+                  <Plus size={13} strokeWidth={2.5} />
+                  <span>{language === 'en' ? 'New User' : 'Nuevo Usuario'}</span>
+                </button>
+              )}
+              {renderRightUtilities()}
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            {renderRightUtilities()}
+
+          {/* Row 2: Filter Pills & Search Bar */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 w-full">
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none w-full sm:w-auto">
+              {settingsFilters.map((f) => {
+                const isActive = currentFilter === f.id;
+                return (
+                  <button
+                    key={f.id}
+                    onClick={() => onFilterChange(f.id)}
+                    className={`px-2.5 sm:px-3 py-1 rounded-full text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                      isActive
+                        ? 'bg-white text-[#080F1D] font-bold shadow-md'
+                        : 'bg-white/[0.04] text-white/60 hover:text-white hover:bg-white/[0.08] border border-white/[0.05]'
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="relative w-full sm:w-64">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => onSearchChange(e.target.value)}
+                placeholder={language === 'en' ? 'Search user or email...' : 'Buscar usuario o correo...'}
+                className="w-full pl-9 pr-3 py-1.5 rounded-xl glass-input text-xs text-white placeholder-white/30"
+              />
+            </div>
           </div>
         </div>
       )}
