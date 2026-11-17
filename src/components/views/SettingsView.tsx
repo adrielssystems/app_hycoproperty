@@ -14,6 +14,7 @@ import {
   Wrench,
   Check,
   Link2,
+  BarChart3,
 } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
@@ -36,6 +37,7 @@ const AVAILABLE_SECTIONS = [
   { id: 'properties', labelEn: 'Properties & Suites', labelEs: 'Propiedades y Suites', icon: Building2 },
   { id: 'tenants', labelEn: 'Tenants & Leases', labelEs: 'Inquilinos y Contratos', icon: Users },
   { id: 'billing', labelEn: 'Billing & Finance', labelEs: 'Facturación y Finanzas', icon: DollarSign },
+  { id: 'reports', labelEn: 'Financial Reports', labelEs: 'Reportes Financieros', icon: BarChart3 },
   { id: 'maintenance', labelEn: 'Helpdesk & Maintenance', labelEs: 'Mantenimiento', icon: Wrench },
 ];
 

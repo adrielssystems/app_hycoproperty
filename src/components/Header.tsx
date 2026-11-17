@@ -12,6 +12,7 @@ import {
   FileSpreadsheet,
   LayoutGrid,
   Settings,
+  BarChart3,
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
@@ -398,6 +399,24 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       )}
 
+      {/* Financial Reports Toolbar */}
+      {currentTab === 'reports' && (
+        <div className="flex items-center justify-between gap-4 w-full">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            {renderLogo()}
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <BarChart3 size={17} className="text-[#F3D270]" />
+              <span className="font-bold text-xs sm:text-base text-white tracking-tight whitespace-nowrap">
+                {language === 'en' ? 'Financial Reports' : 'Reportes Financieros'}
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {renderRightUtilities()}
+          </div>
+        </div>
+      )}
+
       {/* Settings Toolbar */}
       {currentTab === 'settings' && (
         <div className="flex items-center justify-between gap-4 w-full">
@@ -409,6 +428,21 @@ export const Header: React.FC<HeaderProps> = ({
                 {language === 'en' ? 'Settings & Staff Permissions' : 'Ajustes y Permisos de Usuarios'}
               </span>
             </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {renderRightUtilities()}
+          </div>
+        </div>
+      )}
+
+      {/* Safe Fallback Toolbar if tab is any other section */}
+      {!['overview', 'properties', 'tenants', 'billing', 'reports', 'maintenance', 'settings'].includes(currentTab) && (
+        <div className="flex items-center justify-between gap-4 w-full">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            {renderLogo()}
+            <span className="font-bold text-xs sm:text-base text-white tracking-tight capitalize">
+              {currentTab}
+            </span>
           </div>
           <div className="flex items-center gap-2">
             {renderRightUtilities()}
