@@ -79,10 +79,14 @@ export default function DashboardPage() {
       const authData = await authRes.json();
       if (authData.authenticated && authData.user) {
         setUser(authData.user);
-        // Enforce RBAC tab restriction: if current tab is not allowed, switch to first allowed
-        const allowed: string[] = authData.user.allowed_sections || ['overview'];
-        if (authData.user.role !== 'SUPER_ADMIN' && !allowed.includes(currentTab)) {
-          setCurrentTab(allowed[0] || 'overview');
+        // Enforce RBAC tab restriction: Subcontractors are strictly locked to maintenance
+        if (authData.user.role === 'SUBCONTRACTOR') {
+          setCurrentTab('maintenance');
+        } else if (authData.user.role !== 'SUPER_ADMIN' && authData.user.role !== 'ADMIN') {
+          const allowed: string[] = authData.user.allowed_sections || ['overview'];
+          if (!allowed.includes(currentTab)) {
+            setCurrentTab(allowed[0] || 'overview');
+          }
         }
       } else {
         router.push('/login');
@@ -267,6 +271,8 @@ export default function DashboardPage() {
               currentFilter={currentFilter}
               searchQuery={searchQuery}
               onRefresh={loadDashboardData}
+              userRole={user?.role}
+              userName={user?.name}
             />
           )}
 

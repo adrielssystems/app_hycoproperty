@@ -11,6 +11,7 @@ import { useLanguage } from '@/context/LanguageContext';
 export interface PropertyData {
   id?: number;
   name: string;
+  legal_name?: string;
   type: string;
   address: string;
   total_units: number;
@@ -36,6 +37,7 @@ export const PropertyModal: React.FC<PropertyModalProps> = ({
   const isEditing = !!propertyToEdit?.id;
 
   const [name, setName] = useState('');
+  const [legalName, setLegalName] = useState('');
   const [type, setType] = useState('Commercial');
   const [address, setAddress] = useState('');
   const [totalUnits, setTotalUnits] = useState(10);
@@ -48,6 +50,7 @@ export const PropertyModal: React.FC<PropertyModalProps> = ({
   useEffect(() => {
     if (propertyToEdit) {
       setName(propertyToEdit.name || '');
+      setLegalName(propertyToEdit.legal_name || '');
       setType(propertyToEdit.type || 'Commercial');
       setAddress(propertyToEdit.address || '');
       setTotalUnits(propertyToEdit.total_units || 0);
@@ -56,6 +59,7 @@ export const PropertyModal: React.FC<PropertyModalProps> = ({
       setVideoUrl(propertyToEdit.video_url || null);
     } else {
       setName('');
+      setLegalName('');
       setType('Commercial');
       setAddress('');
       setTotalUnits(10);
@@ -77,6 +81,7 @@ export const PropertyModal: React.FC<PropertyModalProps> = ({
       const payload = {
         id: propertyToEdit?.id,
         name,
+        legal_name: legalName.trim() || null,
         type,
         address,
         total_units: totalUnits,
@@ -150,8 +155,15 @@ export const PropertyModal: React.FC<PropertyModalProps> = ({
         </div>
 
         <Input
+          label={language === 'en' ? 'Legal / Registered Building Name' : 'Nombre Legal / de Registro del Edificio'}
+          placeholder="e.g. HYCO Zionsville Holdings LLC"
+          value={legalName}
+          onChange={(e) => setLegalName(e.target.value)}
+        />
+
+        <Input
           label={language === 'en' ? 'Street Address & City' : 'Dirección y Ubicación'}
-          placeholder="e.g. 8200 NW 41st St, Doral, FL 33166"
+          placeholder="e.g. 7898 Zionsville Rd, Indianapolis, IN 46268"
           value={address}
           onChange={(e) => setAddress(e.target.value)}
           required

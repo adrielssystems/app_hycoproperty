@@ -4,7 +4,7 @@ import { query } from '@/lib/db';
 export async function GET(request: Request) {
   try {
     const properties = await query(`
-      SELECT id, name, type, address, total_units, available_units, occupancy_rate, image_url, video_url, created_at
+      SELECT id, name, legal_name, type, address, total_units, available_units, occupancy_rate, image_url, video_url, created_at
       FROM properties
       ORDER BY id ASC
     `);
@@ -17,7 +17,7 @@ export async function GET(request: Request) {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { name, type, address, total_units = 0, available_units = 0, image_url = null, video_url = null } = body;
+    const { name, legal_name = null, type, address, total_units = 0, available_units = 0, image_url = null, video_url = null } = body;
 
     if (!name || !type || !address) {
       return NextResponse.json(
@@ -31,10 +31,10 @@ export async function POST(req: Request) {
     const occRate = total > 0 ? parseFloat((((total - avail) / total) * 100).toFixed(1)) : 0.0;
 
     const result = await query(
-      `INSERT INTO properties (name, type, address, total_units, available_units, occupancy_rate, image_url, video_url)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `INSERT INTO properties (name, legal_name, type, address, total_units, available_units, occupancy_rate, image_url, video_url)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING *`,
-      [name, type, address, total, avail, occRate, image_url, video_url]
+      [name, legal_name, type, address, total, avail, occRate, image_url, video_url]
     );
 
     return NextResponse.json({ success: true, property: result[0] });
@@ -47,7 +47,7 @@ export async function POST(req: Request) {
 export async function PUT(req: Request) {
   try {
     const body = await req.json();
-    const { id, name, type, address, total_units, available_units, image_url, video_url } = body;
+    const { id, name, legal_name, type, address, total_units, available_units, image_url, video_url } = body;
 
     if (!id) {
       return NextResponse.json({ success: false, message: 'Property ID is required' }, { status: 400 });
@@ -60,16 +60,17 @@ export async function PUT(req: Request) {
     const result = await query(
       `UPDATE properties
        SET name = COALESCE($1, name),
-           type = COALESCE($2, type),
-           address = COALESCE($3, address),
-           total_units = $4,
-           available_units = $5,
-           occupancy_rate = $6,
-           image_url = COALESCE($7, image_url),
-           video_url = COALESCE($8, video_url)
-       WHERE id = $9
+           legal_name = COALESCE($2, legal_name),
+           type = COALESCE($3, type),
+           address = COALESCE($4, address),
+           total_units = $5,
+           available_units = $6,
+           occupancy_rate = $7,
+           image_url = COALESCE($8, image_url),
+           video_url = COALESCE($9, video_url)
+       WHERE id = $10
        RETURNING *`,
-      [name, type, address, total, avail, occRate, image_url, video_url, id]
+      [name, legal_name, type, address, total, avail, occRate, image_url, video_url, id]
     );
 
     if (result.length === 0) {

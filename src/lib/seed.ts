@@ -16,6 +16,7 @@ export async function initAndSeedDatabase() {
   try {
     await pool.query(`
       ALTER TABLE users ADD COLUMN IF NOT EXISTS allowed_sections TEXT DEFAULT 'overview,properties,tenants,billing,maintenance';
+      ALTER TABLE properties ADD COLUMN IF NOT EXISTS legal_name VARCHAR(255);
     `);
   } catch (colErr) {
     console.warn('Column check warning:', colErr);

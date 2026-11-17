@@ -30,6 +30,8 @@ interface MaintenanceViewProps {
   currentFilter?: string;
   searchQuery?: string;
   onRefresh?: () => void;
+  userRole?: string;
+  userName?: string;
 }
 
 export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
@@ -37,6 +39,8 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
   currentFilter = 'ALL',
   searchQuery = '',
   onRefresh,
+  userRole,
+  userName,
 }) => {
   const { language } = useLanguage();
 
@@ -100,6 +104,13 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
 
   const filteredTickets = useMemo(() => {
     return fallbackTickets.filter((item) => {
+      // Subcontractors ONLY see tickets explicitly assigned to them
+      if (userRole === 'SUBCONTRACTOR') {
+        const tech = (item.assigned_technician || '').toLowerCase();
+        const nameMatch = userName ? tech.includes(userName.toLowerCase()) : false;
+        if (!nameMatch) return false;
+      }
+
       const matchSearch =
         !searchQuery ||
         item.ticket_code.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -117,7 +128,7 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
 
       return matchSearch && matchStatus;
     });
-  }, [fallbackTickets, searchQuery, currentFilter]);
+  }, [fallbackTickets, searchQuery, currentFilter, userRole, userName]);
 
   const activeCount = useMemo(() => {
     return fallbackTickets.filter((t) => t.status !== 'RESOLVED').length;

@@ -21,7 +21,6 @@ export const NewSuiteModal: React.FC<NewSuiteModalProps> = ({ isOpen, onClose, o
   const [unitType, setUnitType] = useState('Corporate Office');
   const [areaSqft, setAreaSqft] = useState('1200');
   const [rentPrice, setRentPrice] = useState('3200');
-  const [floor, setFloor] = useState('1');
   const [status, setStatus] = useState('AVAILABLE');
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
@@ -43,7 +42,7 @@ export const NewSuiteModal: React.FC<NewSuiteModalProps> = ({ isOpen, onClose, o
           unit_type: unitType,
           area_sqft: parseFloat(areaSqft) || 1200,
           rent_price: parseFloat(rentPrice) || 3200,
-          floor: parseInt(floor, 10) || 1,
+          floor: 1,
           status,
           image_url: imageUrl,
           video_url: videoUrl,
@@ -109,24 +108,16 @@ export const NewSuiteModal: React.FC<NewSuiteModalProps> = ({ isOpen, onClose, o
           />
         </div>
 
-        {/* Space Type, Sqft, Rent, Floor */}
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+        {/* Space Type & Area (Single-story Suite) */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="sm:col-span-2">
             <Input
               label={language === 'en' ? 'Unit Type' : 'Tipo de Espacio'}
               value={unitType}
               onChange={(e) => setUnitType(e.target.value)}
-              placeholder="e.g. Corporate Office"
+              placeholder="e.g. Corporate Office / Warehouse"
             />
           </div>
-
-          <Input
-            label={language === 'en' ? 'Floor' : 'Piso'}
-            type="number"
-            value={floor}
-            onChange={(e) => setFloor(e.target.value)}
-            required
-          />
 
           <Input
             label={language === 'en' ? 'Area (sqft)' : 'Superficie (sqft)'}

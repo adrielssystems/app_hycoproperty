@@ -468,12 +468,31 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </label>
               <select
                 value={formData.role}
-                onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                onChange={(e) => {
+                  const newRole = e.target.value;
+                  let defaultSections = formData.allowed_sections;
+                  if (newRole === 'SUBCONTRACTOR') {
+                    defaultSections = ['maintenance'];
+                  } else if (newRole === 'FINANCE') {
+                    defaultSections = ['overview', 'tenants', 'billing', 'reports'];
+                  } else if (newRole === 'INTERNAL_MAINTENANCE') {
+                    defaultSections = ['overview', 'maintenance'];
+                  } else if (newRole === 'PROPERTY_MANAGER') {
+                    defaultSections = ['overview', 'properties', 'tenants', 'maintenance', 'reports'];
+                  } else if (newRole === 'ADMIN' || newRole === 'SUPER_ADMIN') {
+                    defaultSections = ['overview', 'properties', 'tenants', 'billing', 'reports', 'maintenance'];
+                  }
+                  setFormData({ ...formData, role: newRole, allowed_sections: defaultSections });
+                }}
                 className="w-full px-3.5 py-2.5 rounded-xl glass-input text-xs text-white bg-[#0B1526] border border-white/10 focus:border-[#D4AF37]"
               >
-                <option value="EMPLOYEE">EMPLOYEE (Empleado de Operaciones)</option>
-                <option value="ADMIN">ADMIN (Administrador de Propiedades)</option>
-                <option value="SUPER_ADMIN">SUPER_ADMIN (Acceso Total)</option>
+                <option value="ADMIN">ADMIN (Dirección / Propietario)</option>
+                <option value="PROPERTY_MANAGER">PROPERTY_MANAGER (Gestión Inmobiliaria)</option>
+                <option value="FINANCE">FINANCE (Finanzas & QBO)</option>
+                <option value="INTERNAL_MAINTENANCE">INTERNAL_MAINTENANCE (Técnico Interno)</option>
+                <option value="SUBCONTRACTOR">SUBCONTRACTOR (Solo Tickets Asignados)</option>
+                <option value="EMPLOYEE">EMPLOYEE (Operaciones Generales)</option>
+                <option value="SUPER_ADMIN">SUPER_ADMIN (Developer Only)</option>
               </select>
             </div>
 

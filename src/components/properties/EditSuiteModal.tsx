@@ -41,7 +41,6 @@ export const EditSuiteModal: React.FC<EditSuiteModalProps> = ({
   const [unitType, setUnitType] = useState('Oficina Ejecutiva');
   const [areaSqft, setAreaSqft] = useState('500');
   const [rentPrice, setRentPrice] = useState('1500');
-  const [floor, setFloor] = useState('1');
   const [status, setStatus] = useState('AVAILABLE');
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
@@ -56,7 +55,6 @@ export const EditSuiteModal: React.FC<EditSuiteModalProps> = ({
       setUnitType(unit.unit_type || 'Oficina Ejecutiva');
       setAreaSqft(String(unit.area_sqft || 500));
       setRentPrice(String(unit.rent_price || 1500));
-      setFloor(String(unit.floor || 1));
       setStatus(unit.status || 'AVAILABLE');
       setImageUrl(unit.image_url || null);
       setVideoUrl(unit.video_url || null);
@@ -80,7 +78,7 @@ export const EditSuiteModal: React.FC<EditSuiteModalProps> = ({
           unit_type: unitType,
           area_sqft: parseFloat(areaSqft) || 500,
           rent_price: parseFloat(rentPrice) || 1500,
-          floor: parseInt(floor, 10) || 1,
+          floor: unit.floor || 1,
           status,
           image_url: imageUrl,
           video_url: videoUrl,
@@ -138,7 +136,7 @@ export const EditSuiteModal: React.FC<EditSuiteModalProps> = ({
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input
             label={language === 'en' ? 'Suite / Unit #' : 'Número de Suite'}
             placeholder="e.g. Suite 310"
@@ -148,21 +146,13 @@ export const EditSuiteModal: React.FC<EditSuiteModalProps> = ({
           />
 
           <Input
-            label={language === 'en' ? 'Floor' : 'Piso / Nivel'}
-            type="number"
-            value={floor}
-            onChange={(e) => setFloor(e.target.value)}
+            label={language === 'en' ? 'Space Type' : 'Tipo de Espacio'}
+            placeholder="e.g. Corporate Office / Warehouse"
+            value={unitType}
+            onChange={(e) => setUnitType(e.target.value)}
             required
           />
         </div>
-
-        <Input
-          label={language === 'en' ? 'Space Type' : 'Tipo de Espacio'}
-          placeholder="e.g. Oficina Corporativa / Warehouse"
-          value={unitType}
-          onChange={(e) => setUnitType(e.target.value)}
-          required
-        />
 
         <div className="grid grid-cols-2 gap-4">
           <Input

@@ -49,14 +49,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   // Filter sections based on permissions
   const filteredNavItems = baseNavItems.filter((item) => {
-    if (user?.role === 'SUPER_ADMIN') return true;
+    if (user?.role === 'SUBCONTRACTOR') {
+      return item.id === 'maintenance';
+    }
+    if (user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN') return true;
     return allowedSections.includes(item.id);
   });
 
-  // Add settings tab for Admins / Super Admins
-  const navItems = isAdmin
-    ? [...filteredNavItems, { id: 'settings', label: language === 'en' ? 'Settings' : 'Ajustes', icon: Settings }]
-    : filteredNavItems;
+  // Add settings tab for Admins / Super Admins (Developer & Humberto)
+  const navItems =
+    isAdmin && user?.role !== 'SUBCONTRACTOR'
+      ? [...filteredNavItems, { id: 'settings', label: language === 'en' ? 'Settings' : 'Ajustes', icon: Settings }]
+      : filteredNavItems;
 
   return (
     <>
