@@ -9,6 +9,7 @@ import {
   DollarSign,
   BarChart3,
   Wrench,
+  Video,
   Settings,
   LogOut,
 } from 'lucide-react';
@@ -45,12 +46,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'billing', label: t('navBilling'), icon: DollarSign },
     { id: 'reports', label: t('navReports'), icon: BarChart3 },
     { id: 'maintenance', label: t('navMaintenance'), icon: Wrench },
+    { id: 'surveillance', label: language === 'en' ? 'CCTV Security' : 'Cámaras CCTV', icon: Video },
   ];
 
   // Filter sections based on permissions
   const filteredNavItems = baseNavItems.filter((item) => {
     if (user?.role === 'SUBCONTRACTOR') {
       return item.id === 'maintenance';
+    }
+    if (user?.role === 'FINANCE') {
+      return ['overview', 'tenants', 'billing', 'reports'].includes(item.id);
     }
     if (user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN') return true;
     return allowedSections.includes(item.id);

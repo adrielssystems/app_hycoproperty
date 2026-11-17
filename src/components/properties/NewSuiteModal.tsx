@@ -4,9 +4,10 @@ import React, { useState } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { CheckCircle2, Plus } from 'lucide-react';
+import { CheckCircle2, Plus, Sparkles } from 'lucide-react';
 import { MediaUploadProcessor } from './MediaUploadProcessor';
 import { useLanguage } from '@/context/LanguageContext';
+import { useToast } from '@/context/ToastContext';
 
 interface NewSuiteModalProps {
   isOpen: boolean;
@@ -16,16 +17,51 @@ interface NewSuiteModalProps {
 
 export const NewSuiteModal: React.FC<NewSuiteModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const { t, language } = useLanguage();
+  const { success: toastSuccess, error: toastError } = useToast();
   const [propertyId, setPropertyId] = useState('1');
   const [unitNumber, setUnitNumber] = useState('');
   const [unitType, setUnitType] = useState('Corporate Office');
   const [areaSqft, setAreaSqft] = useState('1200');
   const [rentPrice, setRentPrice] = useState('3200');
+  const [description, setDescription] = useState('');
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [status, setStatus] = useState('AVAILABLE');
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+
+  const handleGenerateAIDescription = async () => {
+    setIsGeneratingAI(true);
+    try {
+      const res = await fetch('/api/ai/describe-suite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          unitNumber: unitNumber || 'Suite',
+          unitType,
+          areaSqft,
+          rentPrice,
+          notes: description,
+          language,
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.description) {
+        setDescription(data.description);
+        toastSuccess(
+          language === 'en' ? 'Suite description generated with AI.' : 'Descripción de suite generada con IA.',
+          'AI Assistant'
+        );
+      } else {
+        toastError(data.message || 'Error generating description');
+      }
+    } catch {
+      toastError(language === 'en' ? 'Failed to reach AI assistant.' : 'Error al conectar con el asistente IA.');
+    } finally {
+      setIsGeneratingAI(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -137,6 +173,43 @@ export const NewSuiteModal: React.FC<NewSuiteModalProps> = ({ isOpen, onClose, o
           onChange={(e) => setRentPrice(e.target.value)}
           placeholder="3500.00"
         />
+
+        {/* AI Commercial Description Assistant */}
+        <div>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="block text-xs font-semibold text-white/70">
+              {language === 'en' ? 'Commercial Description / Notes' : 'Descripción Comercial / Notas'}
+            </label>
+            <button
+              type="button"
+              onClick={handleGenerateAIDescription}
+              disabled={isGeneratingAI}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gradient-to-r from-[#F3D270] to-[#D4AF37] text-[#070D18] text-[11px] font-bold shadow-sm hover:opacity-95 transition-all cursor-pointer disabled:opacity-50"
+            >
+              <Sparkles size={12} />
+              <span>
+                {isGeneratingAI
+                  ? language === 'en'
+                    ? 'Generating...'
+                    : 'Generando...'
+                  : language === 'en'
+                  ? 'Generate with AI'
+                  : 'Generar con IA'}
+              </span>
+            </button>
+          </div>
+          <textarea
+            rows={3}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder={
+              language === 'en'
+                ? 'Enter brief notes (e.g. drive-in door, 18ft clear height) and click Generate with AI...'
+                : 'Ingrese notas breves (ej. portón vehicular, altura libre) y pulse Generar con IA...'
+            }
+            className="w-full px-3.5 py-2.5 rounded-xl glass-input text-xs text-white placeholder-white/30 focus:outline-none focus:border-[#D4AF37]/50 resize-none"
+          />
+        </div>
 
         {/* Availability Status */}
         <div>

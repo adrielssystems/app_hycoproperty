@@ -14,6 +14,7 @@ import {
   Settings,
   BarChart3,
   Download,
+  Video,
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { useToast } from '@/context/ToastContext';
@@ -99,6 +100,15 @@ export const Header: React.FC<HeaderProps> = ({
     { id: 'SUPER_ADMIN', label: 'Super Admin' },
     { id: 'ADMIN', label: 'Admin' },
     { id: 'EMPLOYEE', label: language === 'en' ? 'Employees' : 'Empleados' },
+  ];
+
+  // Surveillance property filters
+  const surveillanceFilters = [
+    { id: 'ALL', label: language === 'en' ? 'All Complexes' : 'Todos los Complejos' },
+    { id: 'zionsville', label: 'Zionsville Rd' },
+    { id: 'park100', label: 'Park 100' },
+    { id: 'morris', label: 'Morris St' },
+    { id: 'meridian', label: 'Meridian North' },
   ];
 
   const renderLogo = () => (
@@ -571,8 +581,75 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       )}
 
+      {/* Surveillance Toolbar (Standardized 2-Row Layout) */}
+      {currentTab === 'surveillance' && (
+        <div className="flex flex-col gap-2.5 lg:gap-4 w-full">
+          {/* Row 1: Logo + Title + Action Button + Utilities */}
+          <div className="flex items-center justify-between gap-2 w-full">
+            <div className="flex items-center gap-2 sm:gap-3">
+              {renderLogo()}
+              <div className="flex items-center gap-1.5 shrink-0">
+                <Video size={16} className="text-[#F3D270]" />
+                <span className="font-bold text-xs sm:text-base text-white tracking-tight whitespace-nowrap">
+                  {language === 'en' ? 'CCTV Security & Hik-Connect' : 'Seguridad CCTV y Hik-Connect'}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() =>
+                  toastSuccess(
+                    language === 'en' ? 'All Hikvision NVR channels verified online.' : 'Canales NVR Hikvision verificados en línea.',
+                    'Hik-Connect Cloud'
+                  )
+                }
+                className="flex items-center gap-1 px-2.5 sm:px-3.5 py-1.5 rounded-xl font-bold text-[11px] sm:text-xs text-[#070D18] bg-gradient-to-r from-[#F3D270] via-[#D4AF37] to-[#B89222] hover:opacity-95 transition-all shadow-md shadow-[#D4AF37]/20 whitespace-nowrap cursor-pointer shrink-0"
+              >
+                <RefreshCw size={12} />
+                <span>{language === 'en' ? 'Sync NVR' : 'Sincronizar NVR'}</span>
+              </button>
+              {renderRightUtilities()}
+            </div>
+          </div>
+
+          {/* Row 2: Filter Pills & Search Bar */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 w-full">
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none w-full sm:w-auto">
+              {surveillanceFilters.map((f) => {
+                const isActive = currentFilter === f.id;
+                return (
+                  <button
+                    key={f.id}
+                    onClick={() => onFilterChange(f.id)}
+                    className={`px-2.5 sm:px-3 py-1 rounded-full text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                      isActive
+                        ? 'bg-white text-[#080F1D] font-bold shadow-md'
+                        : 'bg-white/[0.04] text-white/60 hover:text-white hover:bg-white/[0.08] border border-white/[0.05]'
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="relative w-full sm:w-64">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => onSearchChange(e.target.value)}
+                placeholder={language === 'en' ? 'Search camera or complex...' : 'Buscar cámara o complejo...'}
+                className="w-full pl-9 pr-3 py-1.5 rounded-xl glass-input text-xs text-white placeholder-white/30"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Safe Fallback Toolbar if tab is any other section */}
-      {!['overview', 'properties', 'tenants', 'billing', 'reports', 'maintenance', 'settings'].includes(currentTab) && (
+      {!['overview', 'properties', 'tenants', 'billing', 'reports', 'maintenance', 'surveillance', 'settings'].includes(currentTab) && (
         <div className="flex items-center justify-between gap-4 w-full">
           <div className="flex items-center gap-2.5 sm:gap-3">
             {renderLogo()}

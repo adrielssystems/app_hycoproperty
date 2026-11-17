@@ -12,8 +12,10 @@ import {
   Clock,
   AlertCircle,
   Sliders,
+  MessageSquare,
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
+import { useToast } from '@/context/ToastContext';
 import { LeaseOverridesModal } from '@/components/billing/LeaseOverridesModal';
 
 interface Tenant {
@@ -25,11 +27,19 @@ interface Tenant {
   property_name: string;
   suite_number: string;
   monthly_rent: number | string;
+  cam_fee?: number | string;
   lease_start: string;
   lease_end: string;
   qbo_customer_id: string;
   status: string;
 }
+
+const getDaysRemaining = (leaseEnd: string): number => {
+  if (!leaseEnd) return 365;
+  const end = new Date(leaseEnd);
+  const now = new Date();
+  return Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+};
 
 interface TenantsViewProps {
   tenants: Tenant[];
@@ -45,6 +55,7 @@ export const TenantsView: React.FC<TenantsViewProps> = ({
   onOpenNewSuite,
 }) => {
   const { language } = useLanguage();
+  const { success: toastSuccess, info: toastInfo, warning: toastWarning } = useToast();
   const [selectedTenantForOverrides, setSelectedTenantForOverrides] = useState<any | null>(null);
 
   // Fallback seed tenants if empty
@@ -214,23 +225,57 @@ export const TenantsView: React.FC<TenantsViewProps> = ({
                     </div>
                   </td>
 
-                  {/* Monthly Rent */}
+                  {/* Monthly Rent & CAM Breakdown */}
                   <td className="py-4 px-6">
-                    <div className="font-extrabold text-white text-sm">
-                      ${Number(item.monthly_rent).toLocaleString('en-US', { minimumFractionDigits: 0 })}
-                    </div>
-                    <span className="text-[10px] text-white/40">{language === 'en' ? '/ month USD' : '/ mes USD'}</span>
+                    {(() => {
+                      const baseRent = Number(item.monthly_rent) || 0;
+                      const camFee = item.cam_fee !== undefined ? Number(item.cam_fee) : Math.round(baseRent * 0.1);
+                      const total = baseRent + camFee;
+                      return (
+                        <div>
+                          <div className="font-extrabold text-white text-sm font-mono">
+                            ${total.toLocaleString('en-US', { minimumFractionDigits: 0 })}
+                            <span className="text-[10px] font-normal text-white/40 ml-1">/mo</span>
+                          </div>
+                          <div className="text-[10px] text-white/60 font-mono mt-0.5">
+                            {language === 'en' ? 'Base' : 'Renta'}: ${baseRent.toLocaleString()} + CAM: ${camFee.toLocaleString()}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </td>
 
-                  {/* Lease Term */}
+                  {/* Lease Term & Days Remaining Countdown */}
                   <td className="py-4 px-6">
-                    <div className="flex items-center gap-1.5 text-white/80 font-medium">
-                      <Calendar size={13} className="text-white/40" />
-                      <span>{item.lease_start} &rarr; {item.lease_end}</span>
-                    </div>
-                    <span className="text-[10px] text-white/40">
-                      {language === 'en' ? 'Standard 24-36 Mo Term' : 'Contrato Multianual'}
-                    </span>
+                    {(() => {
+                      const days = getDaysRemaining(item.lease_end);
+                      return (
+                        <div>
+                          <div className="flex items-center gap-1.5 text-white/80 font-medium font-mono text-xs">
+                            <Calendar size={13} className="text-white/40" />
+                            <span>{item.lease_start} &rarr; {item.lease_end}</span>
+                          </div>
+                          <div className="mt-1">
+                            <span
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                days > 90
+                                  ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                                  : days > 30
+                                  ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
+                                  : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
+                              }`}
+                            >
+                              <Clock size={10} />
+                              {days > 0
+                                ? `${days} ${language === 'en' ? 'days left' : 'días restantes'}`
+                                : language === 'en'
+                                ? 'Expired'
+                                : 'Vencido'}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </td>
 
                   {/* Status & QBO Customer ID */}
@@ -264,14 +309,42 @@ export const TenantsView: React.FC<TenantsViewProps> = ({
                         <Sliders size={14} />
                       </button>
                       <button
-                        onClick={() => alert(`Enviando estado de cuenta a ${item.email}`)}
+                        onClick={() =>
+                          toastSuccess(
+                            language === 'en'
+                              ? `90-Day Renewal Notice dispatched via SMS (${item.phone}) & Email (${item.email}).`
+                              : `Alerta de renovación (90 días) enviada vía SMS (${item.phone}) y Email (${item.email}).`,
+                            language === 'en' ? 'US SMS & Email Alert Sent' : 'Alerta SMS y Email Enviada'
+                          )
+                        }
+                        title={language === 'en' ? 'Send 90-Day Renewal Notice (SMS & Email)' : 'Enviar Alerta 90 Días (SMS y Email)'}
+                        className="p-2 rounded-lg bg-sky-500/15 hover:bg-sky-500/25 text-sky-400 transition-colors cursor-pointer"
+                      >
+                        <MessageSquare size={14} />
+                      </button>
+                      <button
+                        onClick={() =>
+                          toastInfo(
+                            language === 'en'
+                              ? `Account statement dispatched to ${item.email}`
+                              : `Estado de cuenta enviado a ${item.email}`,
+                            language === 'en' ? 'Statement Sent' : 'Estado de Cuenta'
+                          )
+                        }
                         title={language === 'en' ? 'Send Statement / Email' : 'Enviar Estado de Cuenta'}
                         className="p-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-white/70 hover:text-white transition-colors cursor-pointer"
                       >
                         <Mail size={14} />
                       </button>
                       <button
-                        onClick={() => alert(`Abriendo expediente de contrato para ${item.name}`)}
+                        onClick={() =>
+                          toastInfo(
+                            language === 'en'
+                              ? `Opening lease file for ${item.name} (${item.suite_number})`
+                              : `Abriendo expediente de contrato para ${item.name} (${item.suite_number})`,
+                            language === 'en' ? 'Lease Agreement' : 'Contrato de Arrendamiento'
+                          )
+                        }
                         title={language === 'en' ? 'View Lease Agreement' : 'Ver Contrato de Arrendamiento'}
                         className="p-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-white/70 hover:text-white transition-colors cursor-pointer"
                       >

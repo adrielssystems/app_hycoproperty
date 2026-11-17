@@ -18,6 +18,7 @@ import {
   BillingView,
   ReportsView,
   MaintenanceView,
+  SurveillanceManagementView,
   SettingsView,
 } from '@/components';
 
@@ -273,6 +274,13 @@ export default function DashboardPage() {
               onRefresh={loadDashboardData}
               userRole={user?.role}
               userName={user?.name}
+            />
+          )}
+
+          {currentTab === 'surveillance' && (
+            <SurveillanceManagementView
+              currentFilter={currentFilter}
+              searchQuery={searchQuery}
             />
           )}
 
