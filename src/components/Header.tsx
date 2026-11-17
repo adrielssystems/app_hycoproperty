@@ -15,6 +15,7 @@ import {
   BarChart3,
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
+import { useToast } from '@/context/ToastContext';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 
 interface HeaderProps {
@@ -47,6 +48,7 @@ export const Header: React.FC<HeaderProps> = ({
   onNavigateOverview,
 }) => {
   const { t, language } = useLanguage();
+  const { info: toastInfo, success: toastSuccess } = useToast();
 
   // Properties portfolio filters
   const propertyFilters = [
@@ -229,7 +231,12 @@ export const Header: React.FC<HeaderProps> = ({
 
             <div className="flex items-center gap-2">
               <button
-                onClick={() => alert(language === 'en' ? 'Opening Onboard Tenant wizard...' : 'Abriendo asistente de nuevo inquilino...')}
+                onClick={() =>
+                  toastInfo(
+                    language === 'en' ? 'Opening Onboard Tenant wizard...' : 'Abriendo asistente de nuevo inquilino...',
+                    language === 'en' ? 'New Lease' : 'Nuevo Contrato'
+                  )
+                }
                 className="flex items-center gap-1 px-2.5 sm:px-3.5 py-1.5 rounded-xl font-bold text-[11px] sm:text-xs text-[#070D18] bg-gradient-to-r from-[#F3D270] via-[#D4AF37] to-[#B89222] hover:opacity-95 transition-all shadow-md shadow-[#D4AF37]/20 whitespace-nowrap cursor-pointer shrink-0"
               >
                 <Plus size={13} strokeWidth={2.5} />
@@ -291,7 +298,14 @@ export const Header: React.FC<HeaderProps> = ({
 
             <div className="flex items-center gap-1.5">
               <button
-                onClick={onTriggerSync || (() => alert(language === 'en' ? 'Syncing financial ledger...' : 'Sincronizando libro contable...'))}
+                onClick={
+                  onTriggerSync ||
+                  (() =>
+                    toastSuccess(
+                      language === 'en' ? 'Financial ledger synchronized with QBO.' : 'Libro contable sincronizado con QBO.',
+                      language === 'en' ? 'Sync Complete' : 'Sincronización Completa'
+                    ))
+                }
                 disabled={isSyncing}
                 className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-xl font-bold text-[11px] sm:text-xs text-[#070D18] bg-gradient-to-r from-[#F3D270] via-[#D4AF37] to-[#B89222] hover:opacity-95 transition-all shadow-md shadow-[#D4AF37]/20 whitespace-nowrap cursor-pointer disabled:opacity-50 shrink-0"
               >
@@ -354,7 +368,12 @@ export const Header: React.FC<HeaderProps> = ({
 
             <div className="flex items-center gap-2">
               <button
-                onClick={() => alert(language === 'en' ? 'Opening New Ticket Dispatch modal...' : 'Abriendo creación de nueva orden de trabajo...')}
+                onClick={() =>
+                  toastInfo(
+                    language === 'en' ? 'Opening New Ticket Dispatch modal...' : 'Abriendo creación de nueva orden de trabajo...',
+                    language === 'en' ? 'Helpdesk' : 'Mantenimiento'
+                  )
+                }
                 className="flex items-center gap-1 px-2.5 sm:px-3.5 py-1.5 rounded-xl font-bold text-[11px] sm:text-xs text-[#070D18] bg-gradient-to-r from-[#F3D270] via-[#D4AF37] to-[#B89222] hover:opacity-95 transition-all shadow-md shadow-[#D4AF37]/20 whitespace-nowrap cursor-pointer shrink-0"
               >
                 <Plus size={13} strokeWidth={2.5} />

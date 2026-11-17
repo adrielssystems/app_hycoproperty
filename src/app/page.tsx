@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/context/LanguageContext';
+import { useToast } from '@/context/ToastContext';
 
 import {
   Sidebar,
@@ -22,7 +23,8 @@ import {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const { success: toastSuccess, info: toastInfo } = useToast();
 
   // Navigation tab state ('overview' | 'properties' | 'tenants' | 'billing' | 'maintenance' | 'sync')
   const [currentTab, setCurrentTab] = useState('overview');
@@ -139,7 +141,12 @@ export default function DashboardPage() {
       totalUnits: prev.totalUnits + 1,
     }));
     loadDashboardData();
-    alert(`¡Suite ${newSuite.unit_number} registrada y sincronizada con éxito en la Web Pública!`);
+    toastSuccess(
+      language === 'en'
+        ? `Suite ${newSuite.unit_number} registered & synced to public website!`
+        : `¡Suite ${newSuite.unit_number} registrada y sincronizada con éxito en la Web Pública!`,
+      language === 'en' ? 'Suite Created' : 'Suite Creada'
+    );
   };
 
   // Switch tab reset filters

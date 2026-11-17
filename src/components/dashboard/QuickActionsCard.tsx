@@ -3,6 +3,7 @@
 import React from 'react';
 import { Sparkles, ExternalLink, RefreshCw, Globe, FileDown } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
+import { useToast } from '@/context/ToastContext';
 
 interface QuickActionsCardProps {
   onSyncQBO?: () => void;
@@ -15,7 +16,8 @@ export const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
   onSyncWeb,
   onExportReport,
 }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const { success, info } = useToast();
 
   return (
     <div className="glass-card rounded-2xl p-5 border border-white/[0.08]">
@@ -27,7 +29,13 @@ export const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
         <button
           onClick={
             onSyncQBO ||
-            (() => alert('Financial ledger sync completed successfully.'))
+            (() =>
+              success(
+                language === 'en'
+                  ? 'Financial ledger sync completed successfully.'
+                  : 'Sincronización del libro contable completada con éxito.',
+                'QBO Sync'
+              ))
           }
           className="w-full text-left p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.05] text-white/80 hover:text-white transition-all flex items-center justify-between cursor-pointer group"
         >
@@ -41,7 +49,13 @@ export const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
         <button
           onClick={
             onSyncWeb ||
-            (() => alert('Zero Double-Entry sync with hycopropertymanagement.com (For Lease) executed.'))
+            (() =>
+              success(
+                language === 'en'
+                  ? 'Zero Double-Entry sync with hycopropertymanagement.com executed.'
+                  : 'Sincronización Zero Double-Entry con hycopropertymanagement.com ejecutada.',
+                'Web Portal Sync'
+              ))
           }
           className="w-full text-left p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.05] text-white/80 hover:text-white transition-all flex items-center justify-between cursor-pointer group"
         >
@@ -55,7 +69,13 @@ export const QuickActionsCard: React.FC<QuickActionsCardProps> = ({
         <button
           onClick={
             onExportReport ||
-            (() => alert('Generating monthly executive financial PDF report...'))
+            (() =>
+              info(
+                language === 'en'
+                  ? 'Generating monthly executive financial PDF report...'
+                  : 'Generando reporte financiero ejecutivo en PDF...',
+                'Export Report'
+              ))
           }
           className="w-full text-left p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.05] text-white/80 hover:text-white transition-all flex items-center justify-between cursor-pointer group"
         >

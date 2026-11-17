@@ -17,6 +17,7 @@ import {
   HelpCircle,
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
+import { useToast } from '@/context/ToastContext';
 import { GroupedCategory, QuickBooksItem } from '@/lib/quickbooksUtils';
 
 // HYCO Commercial Real Estate Internal Services to Map
@@ -104,15 +105,10 @@ export const IntegrationTab: React.FC = () => {
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
 
   // UI Feedback & Modals
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const { success: toastSuccess, error: toastError, info: toastInfo } = useToast();
   const [isSavingMappings, setIsSavingMappings] = useState<boolean>(false);
   const [showDisconnectModal, setShowDisconnectModal] = useState<boolean>(false);
   const [isDisconnecting, setIsDisconnecting] = useState<boolean>(false);
-
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 4000);
-  };
 
   // 1. Fetch Integration Settings
   const fetchIntegrationSettings = async () => {
@@ -147,20 +143,22 @@ export const IntegrationTab: React.FC = () => {
         setTotalItems(data.total || 0);
 
         if (isManualSync) {
-          showToast(
+          toastSuccess(
             language === 'en'
               ? `Synced ${data.total || 0} products & services from QuickBooks`
-              : `Sincronizados ${data.total || 0} productos y servicios desde QuickBooks`
+              : `Sincronizados ${data.total || 0} productos y servicios desde QuickBooks`,
+            'QuickBooks Sync'
           );
         }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error fetching QBO items:', err);
       if (isManualSync) {
-        showToast(
+        toastError(
           language === 'en'
             ? 'Error syncing catalog from QuickBooks'
-            : 'Error al sincronizar catálogo desde QuickBooks'
+            : 'Error al sincronizar catálogo desde QuickBooks',
+          'Sync Error'
         );
       }
     } finally {
@@ -186,16 +184,17 @@ export const IntegrationTab: React.FC = () => {
 
       const data = await res.json();
       if (data.success) {
-        showToast(
+        toastSuccess(
           language === 'en'
             ? 'Service item mappings saved successfully'
-            : 'Mapeo de servicios guardado exitosamente'
+            : 'Mapeo de servicios guardado exitosamente',
+          language === 'en' ? 'Mappings Saved' : 'Mapeos Guardados'
         );
       } else {
         throw new Error(data.error);
       }
     } catch (err: any) {
-      alert(`Error saving mappings: ${err.message || 'Unknown error'}`);
+      toastError(err.message || 'Error saving mappings', 'Mapping Error');
     } finally {
       setIsSavingMappings(false);
     }
@@ -212,14 +211,15 @@ export const IntegrationTab: React.FC = () => {
         setIsConnected(false);
         setRealmId(null);
         setShowDisconnectModal(false);
-        showToast(
+        toastSuccess(
           language === 'en'
             ? 'QuickBooks disconnected successfully'
-            : 'QuickBooks desconectado exitosamente'
+            : 'QuickBooks desconectado exitosamente',
+          'Disconnected'
         );
       }
     } catch (err: any) {
-      alert(`Error disconnecting: ${err.message}`);
+      toastError(err.message || 'Error disconnecting', 'Disconnect Error');
     } finally {
       setIsDisconnecting(false);
     }
@@ -256,14 +256,6 @@ export const IntegrationTab: React.FC = () => {
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 relative">
-      {/* Toast Notification */}
-      {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-semibold shadow-2xl flex items-center gap-2 backdrop-blur-xl animate-in fade-in slide-in-from-bottom-2">
-          <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
-          <span>{toastMessage}</span>
-        </div>
-      )}
-
       {/* ========================================================================= */}
       {/* CARD 1: QUICKBOOKS ONLINE INTEGRATION (CONNECTION CARD)                  */}
       {/* ========================================================================= */}
