@@ -422,20 +422,15 @@ export const SurveillanceManagementView: React.FC<SurveillanceManagementViewProp
             <h2 className="text-xs sm:text-sm font-bold text-white flex flex-wrap items-center gap-2">
               <span>
                 {language === 'en'
-                  ? 'Plugin-Free Live CCTV Management Console'
-                  : 'Consola de Vigilancia CCTV en Vivo (Sin Plugins)'}
+                  ? 'Live CCTV Surveillance'
+                  : 'Vigilancia CCTV en Vivo'}
               </span>
               {device && (
                 <span className="px-2 py-0.5 rounded-md bg-white/[0.06] text-[#F3D270] font-mono text-[10px] border border-white/10">
-                  {device.model} ({configSource === 'database' ? 'Property DVR' : 'Env Fallback'})
+                  {device.model}
                 </span>
               )}
             </h2>
-            <p className="text-[11px] text-white/70">
-              {language === 'en'
-                ? 'Cross-browser ISAPI Digest Proxy streaming directly without IE ActiveX plugins.'
-                : 'Transmisión directa vía Proxy ISAPI compatible con todos los navegadores sin plugins de IE.'}
-            </p>
           </div>
         </div>
 
@@ -513,10 +508,10 @@ export const SurveillanceManagementView: React.FC<SurveillanceManagementViewProp
               <div className="flex items-center gap-2">
                 <span className="px-2.5 py-1 rounded-lg bg-rose-600 text-white font-mono font-bold text-[10px] flex items-center gap-1.5 shadow-lg">
                   <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                  {isLive ? 'LIVE MJPEG' : 'SYNCING...'}
+                  {isLive ? 'LIVE' : 'SYNCING...'}
                 </span>
                 <span className="px-2.5 py-1 rounded-lg bg-black/70 backdrop-blur-md text-white font-mono text-[10px] border border-white/10">
-                  CH 0{selectedChannel.id} • {isHdStream ? 'HD Main' : 'Sub-Stream'} • {selectedChannel.resolution}
+                  CH 0{selectedChannel.id} • {isHdStream ? 'HD 1080p' : 'Standard'}
                 </span>
               </div>
 
@@ -535,9 +530,6 @@ export const SurveillanceManagementView: React.FC<SurveillanceManagementViewProp
                 <h3 className="text-sm font-bold text-white">
                   CH 0{selectedChannel.id} — {selectedChannel.name}
                 </h3>
-                <p className="text-[11px] text-white/60 font-mono">
-                  {device?.model || 'DS-7208HUHI-K2'} • {selectedChannel.videoFormat} • Zero-Plugin HTTPS Stream
-                </p>
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
@@ -640,36 +632,9 @@ export const SurveillanceManagementView: React.FC<SurveillanceManagementViewProp
                   </span>
                 </div>
 
-                <p className="text-[11px] text-white/60 mb-3 font-mono">
+                <p className="text-[11px] text-white/60 font-mono">
                   {ch.resolution} • {ch.videoFormat}
                 </p>
-
-                <div
-                  className="pt-2.5 border-t border-white/[0.06] flex items-center justify-between"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <span className="text-[10px] text-white/50 flex items-center gap-1">
-                    <Users className="w-3 h-3" />
-                    {language === 'en' ? 'Owner Portal Access' : 'Acceso a Propietario'}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => toggleOwnerAccess(ch.id)}
-                    className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold transition-all cursor-pointer ${
-                      ownerAllowed
-                        ? 'bg-sky-500/15 text-sky-400 border border-sky-500/30'
-                        : 'bg-white/[0.05] text-white/50 border border-white/10'
-                    }`}
-                  >
-                    {ownerAllowed
-                      ? language === 'en'
-                        ? 'Enabled'
-                        : 'Habilitado'
-                      : language === 'en'
-                      ? 'Internal Only'
-                      : 'Solo Interno'}
-                  </button>
-                </div>
               </div>
             );
           })}

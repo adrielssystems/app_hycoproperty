@@ -100,8 +100,8 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     >
       {children}
 
-      {/* FIXED TOAST CONTAINER IN TOP-RIGHT */}
-      <div className="fixed top-5 right-4 sm:right-6 z-50 flex flex-col gap-2.5 max-w-sm w-full pointer-events-none">
+      {/* FIXED TOAST CONTAINER IN TOP-CENTER */}
+      <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[100] flex flex-col items-center gap-2.5 max-w-md w-[calc(100%-2rem)] pointer-events-none">
         <AnimatePresence>
           {toasts.map((toast) => {
             const isSuccess = toast.type === 'success';
@@ -115,7 +115,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -20, scale: 0.95 }}
                 transition={{ duration: 0.22, ease: 'easeOut' }}
-                className={`pointer-events-auto relative overflow-hidden rounded-2xl p-4 shadow-2xl backdrop-blur-2xl border transition-all ${
+                className={`w-full pointer-events-auto relative overflow-hidden rounded-2xl p-4 shadow-2xl backdrop-blur-2xl border transition-all ${
                   isSuccess
                     ? 'bg-[#0B1526]/95 border-[#D4AF37]/40 shadow-[#D4AF37]/10'
                     : isError
