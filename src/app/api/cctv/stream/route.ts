@@ -10,6 +10,9 @@ export async function GET(req: Request) {
   const channel = parseInt(searchParams.get('channel') || '1', 10);
   const hd = searchParams.get('hd') === '1';
   const propertyId = searchParams.get('propertyId') || 'test';
+  const requestedFps = parseInt(searchParams.get('fps') || '5', 10);
+  const fps = Math.min(Math.max(isNaN(requestedFps) ? 5 : requestedFps, 1), 6);
+  const delayMs = Math.round(1000 / fps);
 
   if (isNaN(channel) || channel < 1 || channel > 32) {
     return new Response('Invalid channel ID', { status: 400 });
@@ -42,7 +45,7 @@ export async function GET(req: Request) {
           await new Promise((r) => setTimeout(r, 500));
         }
 
-        await new Promise((r) => setTimeout(r, 180));
+        await new Promise((r) => setTimeout(r, delayMs));
       }
 
       try {

@@ -17,6 +17,9 @@ import {
   Trash2,
   Power,
   PowerOff,
+  LayoutGrid,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { useToast } from '@/context/ToastContext';
@@ -55,6 +58,8 @@ interface DvrConfigRecord {
   hasPassword: boolean;
 }
 
+type GridLayoutMode = '1x1' | '2x2' | '3x3' | '4x4';
+
 interface SurveillanceManagementViewProps {
   properties?: PropertyItem[];
   userRole?: string;
@@ -82,7 +87,6 @@ export const SurveillanceManagementView: React.FC<SurveillanceManagementViewProp
     ];
   }, [properties]);
 
-  // 'test' is the dedicated Test DVR (hyco34.dvrcam.info), numeric strings are DB properties
   const [selectedTarget, setSelectedTarget] = useState<string>('test');
   const [configuredPropertyIds, setConfiguredPropertyIds] = useState<number[]>([]);
   const [isConnected, setIsConnected] = useState(false);
@@ -91,6 +95,8 @@ export const SurveillanceManagementView: React.FC<SurveillanceManagementViewProp
   const [device, setDevice] = useState<DvrDevice | null>(null);
   const [channels, setChannels] = useState<DvrChannel[]>([]);
   const [selectedChannelId, setSelectedChannelId] = useState<number>(1);
+  const [gridLayout, setGridLayout] = useState<GridLayoutMode>('3x3');
+  const [gridPage, setGridPage] = useState<number>(0);
 
   const [isNightVision, setIsNightVision] = useState(false);
   const [isHdStream, setIsHdStream] = useState(false);
@@ -169,11 +175,11 @@ export const SurveillanceManagementView: React.FC<SurveillanceManagementViewProp
   }, []);
 
   const handlePropertyChange = (nextTarget: string) => {
-    // Always disconnect previous stream when switching properties to avoid wasted resources
     setIsConnected(false);
     setChannels([]);
     setDevice(null);
     setStreamError(false);
+    setGridPage(0);
     setSelectedTarget(nextTarget);
   };
 
@@ -195,15 +201,23 @@ export const SurveillanceManagementView: React.FC<SurveillanceManagementViewProp
       });
       const data = await res.json();
       if (data.success && Array.isArray(data.channels) && data.channels.length > 0) {
+        const count = data.channels.length;
         setDevice(data.device);
         setChannels(data.channels);
         setSelectedChannelId(data.channels[0].id);
+        setGridPage(0);
+        // Automatically select best DVR matrix for channel count (4 -> 2x2, 8-9 -> 3x3, 16 -> 4x4)
+        if (count <= 1) setGridLayout('1x1');
+        else if (count <= 4) setGridLayout('2x2');
+        else if (count <= 9) setGridLayout('3x3');
+        else setGridLayout('4x4');
+
         setStreamKey(Date.now());
         setIsConnected(true);
         toastSuccess(
           language === 'en'
-            ? `Connected to ${activeTargetName} (${data.channels.length} channels).`
-            : `Conectado a ${activeTargetName} (${data.channels.length} canales).`,
+            ? `Connected to ${activeTargetName} (${count} channels).`
+            : `Conectado a ${activeTargetName} (${count} canales).`,
           'CCTV Live'
         );
       } else {
@@ -354,8 +368,31 @@ export const SurveillanceManagementView: React.FC<SurveillanceManagementViewProp
       videoFormat: 'NTSC',
     };
 
-  const handleSelectChannel = (id: number) => {
+  const gridCapacity =
+    gridLayout === '1x1' ? 1 : gridLayout === '2x2' ? 4 : gridLayout === '3x3' ? 9 : 16;
+
+  const totalPages = Math.max(1, Math.ceil(filteredChannels.length / gridCapacity));
+  const safePage = Math.min(gridPage, totalPages - 1);
+
+  const visibleGridChannels = useMemo(() => {
+    if (gridLayout === '1x1') return [selectedChannel];
+    const start = safePage * gridCapacity;
+    return filteredChannels.slice(start, start + gridCapacity);
+  }, [gridLayout, selectedChannel, safePage, gridCapacity, filteredChannels]);
+
+  const handleSelectChannelFromList = (id: number) => {
     setSelectedChannelId(id);
+    setStreamError(false);
+    // If currently in multi-grid and channel is on another page, jump to its page
+    const idx = filteredChannels.findIndex((c) => c.id === id);
+    if (idx !== -1 && gridLayout !== '1x1') {
+      setGridPage(Math.floor(idx / gridCapacity));
+    }
+  };
+
+  const handleZoomChannel = (id: number) => {
+    setSelectedChannelId(id);
+    setGridLayout('1x1');
     setStreamError(false);
     setStreamKey(Date.now());
   };
@@ -429,23 +466,32 @@ export const SurveillanceManagementView: React.FC<SurveillanceManagementViewProp
     setStreamError(false);
     setStreamKey(Date.now());
     toastInfo(
-      language === 'en'
-        ? `Channel 0${selectedChannel.id} live stream resynchronized.`
-        : `Canal 0${selectedChannel.id} resincronizado en vivo.`,
+      language === 'en' ? 'Live camera feeds resynchronized.' : 'Cámaras en vivo resincronizadas.',
       'CCTV Live'
     );
   };
 
-  const liveStreamUrl = `/api/cctv/stream?propertyId=${selectedTarget}&channel=${selectedChannel.id}&hd=${
-    isHdStream ? '1' : '0'
-  }&t=${streamKey}`;
+  const getStreamUrl = (channelId: number, isSingleMode: boolean) => {
+    const hdParam = isSingleMode && isHdStream ? '1' : '0';
+    const fpsParam = isSingleMode ? '5' : '2';
+    return `/api/cctv/stream?propertyId=${selectedTarget}&channel=${channelId}&hd=${hdParam}&fps=${fpsParam}&t=${streamKey}`;
+  };
+
+  const gridColsClass =
+    gridLayout === '1x1'
+      ? 'grid-cols-1'
+      : gridLayout === '2x2'
+      ? 'grid-cols-1 sm:grid-cols-2'
+      : gridLayout === '3x3'
+      ? 'grid-cols-1 sm:grid-cols-2 xl:grid-cols-3'
+      : 'grid-cols-2 sm:grid-cols-3 xl:grid-cols-4';
 
   return (
-    <div className="space-y-6 w-full">
+    <div className="space-y-4 w-full">
       {/* Executive Selector & Manual Connect Bar */}
-      <div className="glass-card rounded-2xl p-4 border border-[#D4AF37]/25 bg-[#D4AF37]/[0.04] flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      <div className="glass-card rounded-2xl p-3.5 border border-[#D4AF37]/25 bg-[#D4AF37]/[0.04] flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-[#D4AF37]/15 text-[#F3D270] border border-[#D4AF37]/30 shrink-0">
+          <div className="p-2 rounded-xl bg-[#D4AF37]/15 text-[#F3D270] border border-[#D4AF37]/30 shrink-0">
             <Lock className="w-4 h-4" />
           </div>
           <div>
@@ -477,9 +523,9 @@ export const SurveillanceManagementView: React.FC<SurveillanceManagementViewProp
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Property Selector */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <Building2 className="w-4 h-4 text-[#F3D270]" />
             <select
               value={selectedTarget}
@@ -544,16 +590,16 @@ export const SurveillanceManagementView: React.FC<SurveillanceManagementViewProp
         </div>
       </div>
 
-      {/* Main 12-Col Grid: Video Stage + Camera Nodes */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left 8 Columns: Active Live Stream or Standby Stage */}
-        <div className="lg:col-span-8 space-y-3">
+      {/* Main 12-Col Grid: 9 Cols DVR Video Matrix + 3 Cols Compact Channel List */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        {/* Left 9 Columns: DVR Grid / Single Stage + Controls */}
+        <div className="lg:col-span-9 space-y-3">
           <div
             ref={playerContainerRef}
-            className="relative rounded-3xl overflow-hidden bg-black border border-white/10 shadow-2xl aspect-video flex items-center justify-center group"
+            className="relative rounded-2xl overflow-hidden bg-[#070D18] border border-white/10 shadow-2xl min-h-[420px] flex flex-col justify-center"
           >
             {!isConnected ? (
-              <div className="w-full h-full flex flex-col items-center justify-center gap-4 p-6 text-center bg-gradient-to-b from-[#0B1526]/80 to-[#070D18]">
+              <div className="w-full aspect-video flex flex-col items-center justify-center gap-4 p-6 text-center bg-gradient-to-b from-[#0B1526]/80 to-[#070D18]">
                 <div className="p-4 rounded-2xl bg-white/[0.04] border border-white/10 text-[#F3D270]">
                   <Video className="w-10 h-10" />
                 </div>
@@ -590,8 +636,8 @@ export const SurveillanceManagementView: React.FC<SurveillanceManagementViewProp
                   </button>
                 )}
               </div>
-            ) : streamError ? (
-              <div className="w-full h-full flex flex-col items-center justify-center gap-3 text-white/70 p-6 text-center bg-black">
+            ) : streamError && gridLayout === '1x1' ? (
+              <div className="w-full aspect-video flex flex-col items-center justify-center gap-3 text-white/70 p-6 text-center bg-black">
                 <WifiOff className="w-10 h-10 text-rose-400" />
                 <p className="text-xs font-semibold">
                   {language === 'en'
@@ -606,61 +652,142 @@ export const SurveillanceManagementView: React.FC<SurveillanceManagementViewProp
                 </button>
               </div>
             ) : (
-              <>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  key={liveStreamUrl}
-                  src={liveStreamUrl}
-                  alt={selectedChannel.name}
-                  onError={() => setStreamError(true)}
-                  className={`w-full h-full object-contain transition-all duration-300 ${
-                    isNightVision ? 'grayscale contrast-125 brightness-95' : ''
-                  }`}
-                />
+              <div className={`grid ${gridColsClass} gap-1.5 p-1.5 bg-black w-full`}>
+                {visibleGridChannels.map((ch) => {
+                  const isSingle = gridLayout === '1x1';
+                  const isFocused = ch.id === selectedChannel.id;
 
-                {/* Minimal Top-Right LIVE Indicator (never obscures DVR top-left timestamp) */}
-                <div className="absolute top-3 right-3 flex items-center gap-2 pointer-events-none">
-                  <span className="px-2.5 py-1 rounded-lg bg-rose-600/90 text-white font-mono font-bold text-[10px] flex items-center gap-1.5 shadow-lg">
-                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                    LIVE
-                  </span>
-                </div>
-              </>
+                  return (
+                    <div
+                      key={`${ch.id}-${gridLayout}`}
+                      onClick={() => setSelectedChannelId(ch.id)}
+                      onDoubleClick={() =>
+                        isSingle ? setGridLayout('3x3') : handleZoomChannel(ch.id)
+                      }
+                      className={`relative bg-black rounded-lg overflow-hidden aspect-video flex items-center justify-center cursor-pointer border transition-all ${
+                        !isSingle && isFocused
+                          ? 'border-[#D4AF37] ring-1 ring-[#D4AF37]/50'
+                          : 'border-white/[0.08] hover:border-white/25'
+                      }`}
+                      title={
+                        isSingle
+                          ? language === 'en'
+                            ? 'Double-click to return to Grid'
+                            : 'Doble clic para volver a cuadrícula'
+                          : language === 'en'
+                          ? 'Double-click to expand full view'
+                          : 'Doble clic para ampliar cámara'
+                      }
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={getStreamUrl(ch.id, isSingle)}
+                        alt={ch.name}
+                        onError={() => {
+                          if (isSingle) setStreamError(true);
+                        }}
+                        className={`w-full h-full object-contain transition-all duration-300 ${
+                          isNightVision ? 'grayscale contrast-125 brightness-95' : ''
+                        }`}
+                      />
+
+                      {/* Subtle Corner Label */}
+                      <div className="absolute bottom-1.5 left-1.5 px-2 py-0.5 rounded bg-black/75 text-white font-mono text-[10px] font-bold pointer-events-none">
+                        CH {ch.id < 10 ? `0${ch.id}` : ch.id}
+                      </div>
+
+                      <div className="absolute top-1.5 right-1.5 flex items-center gap-1 pointer-events-none">
+                        <span className="px-1.5 py-0.5 rounded bg-rose-600/90 text-white font-mono font-bold text-[9px] flex items-center gap-1">
+                          <span className="w-1 h-1 rounded-full bg-white animate-pulse" />
+                          LIVE
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </div>
 
-          {/* Dedicated Control Bar Below Video (zero obstruction of camera frame) */}
+          {/* Dedicated DVR Layout & Camera Control Bar Below Video */}
           {isConnected && (
-            <div className="glass-card rounded-2xl p-3.5 border border-white/[0.08] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[#F3D270]">
-                  <Building2 className="w-3.5 h-3.5" />
-                  <span>{activeTargetName}</span>
-                  <span className="text-white/30">•</span>
-                  <span className="font-mono text-white/60">
-                    CH 0{selectedChannel.id} ({isHdStream ? 'HD 1080p' : 'Standard'})
+            <div className="glass-card rounded-2xl p-3 border border-white/[0.08] flex flex-col xl:flex-row xl:items-center justify-between gap-3">
+              {/* Left: Active Camera + DVR Grid Switcher */}
+              <div className="flex flex-wrap items-center gap-3">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#F3D270] block">
+                    {activeTargetName} • CH {selectedChannel.id < 10 ? `0${selectedChannel.id}` : selectedChannel.id}
                   </span>
+                  <span className="text-xs font-bold text-white">{selectedChannel.name}</span>
                 </div>
-                <h3 className="text-xs sm:text-sm font-bold text-white mt-0.5">
-                  {selectedChannel.name}
-                </h3>
+
+                {/* DVR Matrix Switcher: 1x1, 2x2, 3x3, 4x4 */}
+                <div className="flex items-center gap-1 bg-white/[0.04] border border-white/10 rounded-xl p-1">
+                  <LayoutGrid size={13} className="text-white/50 mx-1.5" />
+                  {(['1x1', '2x2', '3x3', '4x4'] as GridLayoutMode[]).map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => {
+                        setGridLayout(mode);
+                        setGridPage(0);
+                        setStreamError(false);
+                      }}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                        gridLayout === mode
+                          ? 'bg-[#D4AF37] text-[#070D18] shadow-sm'
+                          : 'text-white/60 hover:text-white hover:bg-white/[0.06]'
+                      }`}
+                    >
+                      {mode}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Page Navigation when channels exceed grid capacity */}
+                {gridLayout !== '1x1' && totalPages > 1 && (
+                  <div className="flex items-center gap-1 bg-white/[0.04] border border-white/10 rounded-xl px-1.5 py-1">
+                    <button
+                      type="button"
+                      onClick={() => setGridPage((p) => Math.max(0, p - 1))}
+                      disabled={safePage === 0}
+                      className="p-1 rounded-lg text-white/70 hover:text-white disabled:opacity-30 cursor-pointer"
+                    >
+                      <ChevronLeft size={14} />
+                    </button>
+                    <span className="text-[10px] font-mono text-white/70 px-1">
+                      {safePage + 1}/{totalPages}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setGridPage((p) => Math.min(totalPages - 1, p + 1))}
+                      disabled={safePage >= totalPages - 1}
+                      className="p-1 rounded-lg text-white/70 hover:text-white disabled:opacity-30 cursor-pointer"
+                    >
+                      <ChevronRight size={14} />
+                    </button>
+                  </div>
+                )}
               </div>
 
+              {/* Right: Action Buttons */}
               <div className="flex flex-wrap items-center gap-2">
-                <button
-                  onClick={() => {
-                    setIsHdStream(!isHdStream);
-                    setStreamKey(Date.now());
-                  }}
-                  className={`px-3 py-1.5 rounded-xl text-[11px] font-bold border transition-all flex items-center gap-1.5 cursor-pointer ${
-                    isHdStream
-                      ? 'bg-[#D4AF37] text-[#070D18] border-[#D4AF37]'
-                      : 'bg-white/[0.04] text-white border-white/15 hover:bg-white/10'
-                  }`}
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>{isHdStream ? 'HD 1080p' : 'Fast Stream'}</span>
-                </button>
+                {gridLayout === '1x1' && (
+                  <button
+                    onClick={() => {
+                      setIsHdStream(!isHdStream);
+                      setStreamKey(Date.now());
+                    }}
+                    className={`px-3 py-1.5 rounded-xl text-[11px] font-bold border transition-all flex items-center gap-1.5 cursor-pointer ${
+                      isHdStream
+                        ? 'bg-[#D4AF37] text-[#070D18] border-[#D4AF37]'
+                        : 'bg-white/[0.04] text-white border-white/15 hover:bg-white/10'
+                    }`}
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>{isHdStream ? 'HD 1080p' : 'Fast Stream'}</span>
+                  </button>
+                )}
                 <button
                   onClick={() => setIsNightVision(!isNightVision)}
                   className={`px-3 py-1.5 rounded-xl text-[11px] font-bold border transition-all flex items-center gap-1.5 cursor-pointer ${
@@ -682,7 +809,7 @@ export const SurveillanceManagementView: React.FC<SurveillanceManagementViewProp
                 <button
                   onClick={handleRefreshStream}
                   className="p-2 rounded-xl bg-white/[0.04] hover:bg-white/10 text-white border border-white/15 transition-all cursor-pointer"
-                  title={language === 'en' ? 'Resync Stream' : 'Resincronizar'}
+                  title={language === 'en' ? 'Resync Streams' : 'Resincronizar'}
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
                 </button>
@@ -698,17 +825,15 @@ export const SurveillanceManagementView: React.FC<SurveillanceManagementViewProp
           )}
         </div>
 
-        {/* Right 4 Columns: Live DVR Channel Directory */}
-        <div className="lg:col-span-4 space-y-3 max-h-[540px] overflow-y-auto pr-1 scrollbar-thin">
-          <div className="flex items-center justify-between px-1">
+        {/* Right 3 Columns: Compact Simplified Channel List */}
+        <div className="lg:col-span-3 space-y-2 max-h-[560px] overflow-y-auto pr-1 scrollbar-thin">
+          <div className="flex items-center justify-between px-1 pb-1 border-b border-white/[0.06]">
             <span className="text-[11px] font-bold uppercase tracking-wider text-white/60">
               {isConnected
-                ? language === 'en'
-                  ? `DVR Channels (${filteredChannels.length})`
-                  : `Canales DVR (${filteredChannels.length})`
+                ? `${language === 'en' ? 'Channels' : 'Canales'} (${filteredChannels.length})`
                 : language === 'en'
-                ? 'DVR Channels'
-                : 'Canales DVR'}
+                ? 'Channels'
+                : 'Canales'}
             </span>
             {isConnected && (
               <button
@@ -721,52 +846,48 @@ export const SurveillanceManagementView: React.FC<SurveillanceManagementViewProp
           </div>
 
           {!isConnected ? (
-            <div className="p-6 rounded-2xl border border-white/[0.08] bg-[#0B1526]/60 text-center space-y-2">
-              <Video className="w-6 h-6 text-white/30 mx-auto" />
-              <p className="text-xs text-white/50">
+            <div className="p-4 rounded-xl border border-white/[0.06] bg-[#0B1526]/50 text-center space-y-1.5">
+              <Video className="w-5 h-5 text-white/30 mx-auto" />
+              <p className="text-[11px] text-white/50">
                 {language === 'en'
-                  ? 'Connect to the selected property DVR to load its camera channels.'
-                  : 'Conecta el DVR seleccionado para cargar la lista de cámaras.'}
+                  ? 'Connect DVR to view channels.'
+                  : 'Conecta el DVR para ver canales.'}
               </p>
             </div>
           ) : (
-            filteredChannels.map((ch) => {
-              const isSelected = ch.id === selectedChannel.id;
+            <div className="space-y-1.5">
+              {filteredChannels.map((ch) => {
+                const isSelected = ch.id === selectedChannel.id;
 
-              return (
-                <div
-                  key={ch.id}
-                  onClick={() => handleSelectChannel(ch.id)}
-                  className={`p-4 rounded-2xl border transition-all cursor-pointer ${
-                    isSelected
-                      ? 'bg-[#D4AF37]/10 border-[#D4AF37]/50 shadow-lg shadow-[#D4AF37]/10'
-                      : 'bg-[#0B1526]/80 border-white/[0.08] hover:border-white/20'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2 mb-1.5">
-                    <div className="flex items-center gap-2">
-                      <Video className={`w-4 h-4 shrink-0 ${isSelected ? 'text-[#F3D270]' : 'text-white/50'}`} />
-                      <span className="text-xs font-bold text-white">
-                        CH 0{ch.id} — {ch.name}
+                return (
+                  <button
+                    key={ch.id}
+                    type="button"
+                    onClick={() => handleSelectChannelFromList(ch.id)}
+                    onDoubleClick={() => handleZoomChannel(ch.id)}
+                    className={`w-full px-3 py-2 rounded-xl border transition-all flex items-center justify-between gap-2 text-left cursor-pointer ${
+                      isSelected
+                        ? 'bg-[#D4AF37]/15 border-[#D4AF37]/60 text-white shadow-sm'
+                        : 'bg-[#0B1526]/70 border-white/[0.07] text-white/80 hover:border-white/20 hover:bg-white/[0.04]'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span
+                        className={`w-2 h-2 rounded-full shrink-0 ${
+                          ch.enabled ? 'bg-emerald-400' : 'bg-amber-400'
+                        }`}
+                      />
+                      <span className="text-xs font-semibold truncate">
+                        CH {ch.id < 10 ? `0${ch.id}` : ch.id} • {ch.name}
                       </span>
                     </div>
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-[9px] font-bold shrink-0 ${
-                        ch.enabled
-                          ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                          : 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
-                      }`}
-                    >
-                      {ch.enabled ? 'ONLINE' : 'STANDBY'}
+                    <span className="text-[10px] font-mono text-white/40 shrink-0">
+                      {ch.resolution}
                     </span>
-                  </div>
-
-                  <p className="text-[11px] text-white/60 font-mono">
-                    {ch.resolution} • {ch.videoFormat}
-                  </p>
-                </div>
-              );
-            })
+                  </button>
+                );
+              })}
+            </div>
           )}
         </div>
       </div>
