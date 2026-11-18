@@ -8,11 +8,16 @@ export async function GET(req: Request) {
   }
 
   const { searchParams } = new URL(req.url);
-  const propParam = searchParams.get('propertyId');
-  const propertyId = propParam ? parseInt(propParam, 10) : undefined;
+  const propertyId = searchParams.get('propertyId') || 'test';
 
   try {
     const data = await getDvrStatusAndChannels(propertyId);
+    if (data.notConfigured) {
+      return NextResponse.json(
+        { success: false, notConfigured: true, message: 'No DVR configured for this property' },
+        { status: 404 }
+      );
+    }
     return NextResponse.json({
       success: true,
       device: data.device,

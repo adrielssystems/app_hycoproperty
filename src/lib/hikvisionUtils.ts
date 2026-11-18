@@ -63,15 +63,22 @@ export function getDvrConfig(): DvrConnectionConfig {
   };
 }
 
-export async function getDvrConfigForProperty(propertyId?: number): Promise<DvrConnectionConfig> {
-  if (propertyId && !isNaN(propertyId)) {
+export async function getDvrConfigForProperty(
+  propertyId?: number | string
+): Promise<DvrConnectionConfig | null> {
+  if (!propertyId || propertyId === 'test' || propertyId === 0 || propertyId === '0') {
+    return getDvrConfig();
+  }
+
+  const numericId = typeof propertyId === 'string' ? parseInt(propertyId, 10) : propertyId;
+  if (!isNaN(numericId) && numericId > 0) {
     try {
       const rows = await query(
         `SELECT host, port, username, password_encrypted
          FROM property_dvr_configs
          WHERE property_id = $1 AND is_active = TRUE
          LIMIT 1`,
-        [propertyId]
+        [numericId]
       );
       if (rows && rows.length > 0) {
         return {
@@ -82,11 +89,13 @@ export async function getDvrConfigForProperty(propertyId?: number): Promise<DvrC
           source: 'database',
         };
       }
+      return null;
     } catch (err) {
-      console.error('Failed to read property_dvr_configs, falling back to env:', err);
+      console.error('Failed to read property_dvr_configs:', err);
+      return null;
     }
   }
-  return getDvrConfig();
+  return null;
 }
 
 export async function verifyCctvAccess(): Promise<{ authorized: boolean; role?: string }> {
@@ -224,14 +233,18 @@ function extractXmlTag(xml: string, tag: string): string {
 }
 
 export async function getDvrStatusAndChannels(
-  propertyId?: number,
+  propertyId?: number | string,
   configOverride?: DvrConnectionConfig
 ): Promise<{
   device: DvrDeviceInfo | null;
   channels: DvrChannelInfo[];
   source: string;
+  notConfigured?: boolean;
 }> {
   const config = configOverride || (await getDvrConfigForProperty(propertyId));
+  if (!config) {
+    return { device: null, channels: [], source: 'none', notConfigured: true };
+  }
 
   const [devRes, chanRes] = await Promise.all([
     fetchHikvisionIsapi('/ISAPI/System/deviceInfo', config),
@@ -273,9 +286,10 @@ export async function getDvrStatusAndChannels(
 export async function fetchDvrSnapshot(
   channelId: number,
   hd = false,
-  propertyId?: number
+  propertyId?: number | string
 ): Promise<{ buffer: ArrayBuffer; contentType: string } | null> {
   const config = await getDvrConfigForProperty(propertyId);
+  if (!config) return null;
   const streamSuffix = hd ? '01' : '02';
   const path = `/ISAPI/Streaming/channels/${channelId}${streamSuffix}/picture`;
   const res = await fetchHikvisionIsapi(path, config, 8000);
