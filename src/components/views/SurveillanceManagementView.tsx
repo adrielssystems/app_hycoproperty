@@ -547,10 +547,10 @@ export const SurveillanceManagementView: React.FC<SurveillanceManagementViewProp
       {/* Main 12-Col Grid: Video Stage + Camera Nodes */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left 8 Columns: Active Live Stream or Standby Stage */}
-        <div className="lg:col-span-8 space-y-4">
+        <div className="lg:col-span-8 space-y-3">
           <div
             ref={playerContainerRef}
-            className="relative rounded-3xl overflow-hidden bg-[#070D18] border border-white/10 shadow-2xl aspect-video group"
+            className="relative rounded-3xl overflow-hidden bg-black border border-white/10 shadow-2xl aspect-video flex items-center justify-center group"
           >
             {!isConnected ? (
               <div className="w-full h-full flex flex-col items-center justify-center gap-4 p-6 text-center bg-gradient-to-b from-[#0B1526]/80 to-[#070D18]">
@@ -613,94 +613,89 @@ export const SurveillanceManagementView: React.FC<SurveillanceManagementViewProp
                   src={liveStreamUrl}
                   alt={selectedChannel.name}
                   onError={() => setStreamError(true)}
-                  className={`w-full h-full object-cover transition-all duration-300 ${
+                  className={`w-full h-full object-contain transition-all duration-300 ${
                     isNightVision ? 'grayscale contrast-125 brightness-95' : ''
                   }`}
                 />
 
-                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-black/35 pointer-events-none" />
-
-                {/* Top HUD */}
-                <div className="absolute top-4 left-4 right-4 flex items-center justify-between pointer-events-none">
-                  <div className="flex items-center gap-2">
-                    <span className="px-2.5 py-1 rounded-lg bg-rose-600 text-white font-mono font-bold text-[10px] flex items-center gap-1.5 shadow-lg">
-                      <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                      LIVE
-                    </span>
-                    <span className="px-2.5 py-1 rounded-lg bg-black/70 backdrop-blur-md text-white font-mono text-[10px] border border-white/10">
-                      CH 0{selectedChannel.id} • {isHdStream ? 'HD 1080p' : 'Standard'}
-                    </span>
-                  </div>
-
-                  <span className="px-2.5 py-1 rounded-lg bg-black/70 backdrop-blur-md text-[#F3D270] font-mono text-[10px] border border-[#D4AF37]/30">
-                    {currentTime}
+                {/* Minimal Top-Right LIVE Indicator (never obscures DVR top-left timestamp) */}
+                <div className="absolute top-3 right-3 flex items-center gap-2 pointer-events-none">
+                  <span className="px-2.5 py-1 rounded-lg bg-rose-600/90 text-white font-mono font-bold text-[10px] flex items-center gap-1.5 shadow-lg">
+                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                    LIVE
                   </span>
-                </div>
-
-                {/* Bottom HUD */}
-                <div className="absolute bottom-4 left-4 right-4 flex flex-col sm:flex-row sm:items-end justify-between gap-3">
-                  <div>
-                    <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[#F3D270] mb-0.5">
-                      <Building2 className="w-3.5 h-3.5" />
-                      <span>{activeTargetName}</span>
-                    </div>
-                    <h3 className="text-sm font-bold text-white">
-                      CH 0{selectedChannel.id} — {selectedChannel.name}
-                    </h3>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      onClick={() => {
-                        setIsHdStream(!isHdStream);
-                        setStreamKey(Date.now());
-                      }}
-                      className={`px-3 py-1.5 rounded-xl text-[11px] font-bold border transition-all flex items-center gap-1.5 cursor-pointer ${
-                        isHdStream
-                          ? 'bg-[#D4AF37] text-[#070D18] border-[#D4AF37]'
-                          : 'bg-black/60 text-white border-white/20 hover:bg-white/10'
-                      }`}
-                    >
-                      <Sparkles className="w-3.5 h-3.5" />
-                      <span>{isHdStream ? 'HD 1080p' : 'Fast Stream'}</span>
-                    </button>
-                    <button
-                      onClick={() => setIsNightVision(!isNightVision)}
-                      className={`px-3 py-1.5 rounded-xl text-[11px] font-bold border transition-all flex items-center gap-1.5 cursor-pointer ${
-                        isNightVision
-                          ? 'bg-[#D4AF37] text-[#070D18] border-[#D4AF37]'
-                          : 'bg-black/60 text-white border-white/20 hover:bg-white/10'
-                      }`}
-                    >
-                      <Eye className="w-3.5 h-3.5" />
-                      <span>{language === 'en' ? 'Night IR' : 'Visión IR'}</span>
-                    </button>
-                    <button
-                      onClick={handleSnapshot}
-                      className="px-3 py-1.5 rounded-xl bg-black/60 hover:bg-white/10 text-white border border-white/20 text-[11px] font-bold transition-all flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <Camera className="w-3.5 h-3.5" />
-                      <span>{language === 'en' ? 'Snapshot' : 'Captura'}</span>
-                    </button>
-                    <button
-                      onClick={handleRefreshStream}
-                      className="p-2 rounded-xl bg-black/60 hover:bg-white/10 text-white border border-white/20 transition-all cursor-pointer"
-                      title={language === 'en' ? 'Resync Stream' : 'Resincronizar'}
-                    >
-                      <RefreshCw className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={handleFullscreen}
-                      className="p-2 rounded-xl bg-black/60 hover:bg-white/10 text-white border border-white/20 transition-all cursor-pointer"
-                      title={language === 'en' ? 'Fullscreen' : 'Pantalla Completa'}
-                    >
-                      <Maximize2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
                 </div>
               </>
             )}
           </div>
+
+          {/* Dedicated Control Bar Below Video (zero obstruction of camera frame) */}
+          {isConnected && (
+            <div className="glass-card rounded-2xl p-3.5 border border-white/[0.08] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[#F3D270]">
+                  <Building2 className="w-3.5 h-3.5" />
+                  <span>{activeTargetName}</span>
+                  <span className="text-white/30">•</span>
+                  <span className="font-mono text-white/60">
+                    CH 0{selectedChannel.id} ({isHdStream ? 'HD 1080p' : 'Standard'})
+                  </span>
+                </div>
+                <h3 className="text-xs sm:text-sm font-bold text-white mt-0.5">
+                  {selectedChannel.name}
+                </h3>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={() => {
+                    setIsHdStream(!isHdStream);
+                    setStreamKey(Date.now());
+                  }}
+                  className={`px-3 py-1.5 rounded-xl text-[11px] font-bold border transition-all flex items-center gap-1.5 cursor-pointer ${
+                    isHdStream
+                      ? 'bg-[#D4AF37] text-[#070D18] border-[#D4AF37]'
+                      : 'bg-white/[0.04] text-white border-white/15 hover:bg-white/10'
+                  }`}
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>{isHdStream ? 'HD 1080p' : 'Fast Stream'}</span>
+                </button>
+                <button
+                  onClick={() => setIsNightVision(!isNightVision)}
+                  className={`px-3 py-1.5 rounded-xl text-[11px] font-bold border transition-all flex items-center gap-1.5 cursor-pointer ${
+                    isNightVision
+                      ? 'bg-[#D4AF37] text-[#070D18] border-[#D4AF37]'
+                      : 'bg-white/[0.04] text-white border-white/15 hover:bg-white/10'
+                  }`}
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  <span>{language === 'en' ? 'Night IR' : 'Visión IR'}</span>
+                </button>
+                <button
+                  onClick={handleSnapshot}
+                  className="px-3 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/10 text-white border border-white/15 text-[11px] font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Camera className="w-3.5 h-3.5" />
+                  <span>{language === 'en' ? 'Snapshot' : 'Captura'}</span>
+                </button>
+                <button
+                  onClick={handleRefreshStream}
+                  className="p-2 rounded-xl bg-white/[0.04] hover:bg-white/10 text-white border border-white/15 transition-all cursor-pointer"
+                  title={language === 'en' ? 'Resync Stream' : 'Resincronizar'}
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={handleFullscreen}
+                  className="p-2 rounded-xl bg-white/[0.04] hover:bg-white/10 text-white border border-white/15 transition-all cursor-pointer"
+                  title={language === 'en' ? 'Fullscreen' : 'Pantalla Completa'}
+                >
+                  <Maximize2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right 4 Columns: Live DVR Channel Directory */}
