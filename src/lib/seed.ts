@@ -17,6 +17,18 @@ export async function initAndSeedDatabase() {
     await pool.query(`
       ALTER TABLE users ADD COLUMN IF NOT EXISTS allowed_sections TEXT DEFAULT 'overview,properties,tenants,billing,maintenance';
       ALTER TABLE properties ADD COLUMN IF NOT EXISTS legal_name VARCHAR(255);
+      CREATE TABLE IF NOT EXISTS property_dvr_configs (
+        id SERIAL PRIMARY KEY,
+        property_id INT UNIQUE REFERENCES properties(id) ON DELETE CASCADE,
+        host VARCHAR(255) NOT NULL,
+        port VARCHAR(10) DEFAULT '80',
+        username VARCHAR(100) NOT NULL,
+        password_encrypted TEXT NOT NULL,
+        device_model VARCHAR(100),
+        is_active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
     `);
   } catch (colErr) {
     console.warn('Column check warning:', colErr);

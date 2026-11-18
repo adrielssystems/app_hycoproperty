@@ -10,13 +10,15 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const channel = parseInt(searchParams.get('channel') || '1', 10);
   const hd = searchParams.get('hd') === '1';
+  const propParam = searchParams.get('propertyId');
+  const propertyId = propParam ? parseInt(propParam, 10) : undefined;
 
   if (isNaN(channel) || channel < 1 || channel > 32) {
     return NextResponse.json({ success: false, message: 'Invalid channel ID' }, { status: 400 });
   }
 
   try {
-    const snap = await fetchDvrSnapshot(channel, hd);
+    const snap = await fetchDvrSnapshot(channel, hd, propertyId);
     if (!snap) {
       return NextResponse.json({ success: false, message: 'Failed to retrieve frame from DVR' }, { status: 502 });
     }

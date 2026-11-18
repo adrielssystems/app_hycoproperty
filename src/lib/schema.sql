@@ -120,5 +120,19 @@ CREATE TABLE IF NOT EXISTS settings_integrations (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Per-Property Hikvision DVR / NVR Credentials (AES-256-GCM Encrypted, SUPER_ADMIN only)
+CREATE TABLE IF NOT EXISTS property_dvr_configs (
+  id SERIAL PRIMARY KEY,
+  property_id INT UNIQUE REFERENCES properties(id) ON DELETE CASCADE,
+  host VARCHAR(255) NOT NULL,
+  port VARCHAR(10) DEFAULT '80',
+  username VARCHAR(100) NOT NULL,
+  password_encrypted TEXT NOT NULL,
+  device_model VARCHAR(100),
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
 
 

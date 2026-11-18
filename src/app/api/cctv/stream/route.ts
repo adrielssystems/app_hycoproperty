@@ -9,6 +9,8 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const channel = parseInt(searchParams.get('channel') || '1', 10);
   const hd = searchParams.get('hd') === '1';
+  const propParam = searchParams.get('propertyId');
+  const propertyId = propParam ? parseInt(propParam, 10) : undefined;
 
   if (isNaN(channel) || channel < 1 || channel > 32) {
     return new Response('Invalid channel ID', { status: 400 });
@@ -26,7 +28,7 @@ export async function GET(req: Request) {
     async start(controller) {
       while (!isClosed && !req.signal.aborted) {
         try {
-          const snap = await fetchDvrSnapshot(channel, hd);
+          const snap = await fetchDvrSnapshot(channel, hd, propertyId);
           if (snap && snap.buffer.byteLength > 0 && !isClosed) {
             const header =
               `--${boundary}\r\n` +
@@ -38,11 +40,9 @@ export async function GET(req: Request) {
             controller.enqueue(encoder.encode('\r\n'));
           }
         } catch {
-          // Wait briefly before retrying on transient frame timeout
           await new Promise((r) => setTimeout(r, 500));
         }
 
-        // Throttle to ~4-5 FPS to keep DVR CPU & bandwidth smooth across all browsers
         await new Promise((r) => setTimeout(r, 180));
       }
 

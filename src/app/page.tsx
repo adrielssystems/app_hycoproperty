@@ -279,6 +279,8 @@ export default function DashboardPage() {
 
           {currentTab === 'surveillance' && (
             <SurveillanceManagementView
+              properties={properties}
+              userRole={user?.role}
               currentFilter={currentFilter}
               searchQuery={searchQuery}
             />

@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { cookies } from 'next/headers';
+import { query } from '@/lib/db';
 
 export interface DvrChannelInfo {
   id: number;
@@ -16,13 +17,76 @@ export interface DvrDeviceInfo {
   firmwareVersion: string;
 }
 
-export function getDvrConfig() {
+export interface DvrConnectionConfig {
+  host: string;
+  port: string;
+  user: string;
+  pass: string;
+  source?: 'database' | 'env';
+}
+
+function getEncryptionKey(): Buffer {
+  const secret = process.env.SESSION_SECRET || 'hyco-property-cctv-default-secret-2026';
+  return crypto.createHash('sha256').update(secret).digest();
+}
+
+export function encryptDvrPassword(plainText: string): string {
+  const key = getEncryptionKey();
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+  const encrypted = Buffer.concat([cipher.update(plainText, 'utf8'), cipher.final()]);
+  const authTag = cipher.getAuthTag();
+  return `${iv.toString('hex')}:${authTag.toString('hex')}:${encrypted.toString('hex')}`;
+}
+
+export function decryptDvrPassword(cipherText: string): string {
+  const parts = cipherText.split(':');
+  if (parts.length !== 3) return cipherText;
+  const [ivHex, tagHex, encHex] = parts;
+  const key = getEncryptionKey();
+  const decipher = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(ivHex, 'hex'));
+  decipher.setAuthTag(Buffer.from(tagHex, 'hex'));
+  const decrypted = Buffer.concat([
+    decipher.update(Buffer.from(encHex, 'hex')),
+    decipher.final(),
+  ]);
+  return decrypted.toString('utf8');
+}
+
+export function getDvrConfig(): DvrConnectionConfig {
   return {
     host: process.env.CCTV_DVR_HOST || 'hyco34.dvrcam.info',
     port: process.env.CCTV_DVR_PORT || '80',
     user: process.env.CCTV_DVR_USER || 'test',
     pass: process.env.CCTV_DVR_PASS || 'Hh342026',
+    source: 'env',
   };
+}
+
+export async function getDvrConfigForProperty(propertyId?: number): Promise<DvrConnectionConfig> {
+  if (propertyId && !isNaN(propertyId)) {
+    try {
+      const rows = await query(
+        `SELECT host, port, username, password_encrypted
+         FROM property_dvr_configs
+         WHERE property_id = $1 AND is_active = TRUE
+         LIMIT 1`,
+        [propertyId]
+      );
+      if (rows && rows.length > 0) {
+        return {
+          host: rows[0].host,
+          port: rows[0].port || '80',
+          user: rows[0].username,
+          pass: decryptDvrPassword(rows[0].password_encrypted),
+          source: 'database',
+        };
+      }
+    } catch (err) {
+      console.error('Failed to read property_dvr_configs, falling back to env:', err);
+    }
+  }
+  return getDvrConfig();
 }
 
 export async function verifyCctvAccess(): Promise<{ authorized: boolean; role?: string }> {
@@ -33,6 +97,21 @@ export async function verifyCctvAccess(): Promise<{ authorized: boolean; role?: 
     const user = JSON.parse(sessionCookie.value);
     const allowedRoles = ['SUPER_ADMIN', 'ADMIN', 'PROPERTY_MANAGER', 'EMPLOYEE'];
     if (allowedRoles.includes(user.role)) {
+      return { authorized: true, role: user.role };
+    }
+    return { authorized: false, role: user.role };
+  } catch {
+    return { authorized: false };
+  }
+}
+
+export async function verifySuperAdminAccess(): Promise<{ authorized: boolean; role?: string }> {
+  try {
+    const cookieStore = await cookies();
+    const sessionCookie = cookieStore.get('hyco_session');
+    if (!sessionCookie?.value) return { authorized: false };
+    const user = JSON.parse(sessionCookie.value);
+    if (user.role === 'SUPER_ADMIN') {
       return { authorized: true, role: user.role };
     }
     return { authorized: false, role: user.role };
@@ -60,9 +139,10 @@ function parseDigestHeader(header: string): Record<string, string> {
  */
 export async function fetchHikvisionIsapi(
   path: string,
+  config: DvrConnectionConfig,
   timeoutMs = 8000
 ): Promise<Response> {
-  const { host, port, user, pass } = getDvrConfig();
+  const { host, port, user, pass } = config;
   const baseUrl = `http://${host}${port && port !== '80' ? `:${port}` : ''}`;
   const url = `${baseUrl}${path}`;
 
@@ -86,7 +166,6 @@ export async function fetchHikvisionIsapi(
 
   const wwwAuth = initialRes.headers.get('www-authenticate') || '';
   if (!wwwAuth.toLowerCase().startsWith('digest')) {
-    // Fallback to Basic Auth if Digest is not requested
     const basicToken = Buffer.from(`${user}:${pass}`).toString('base64');
     return fetch(url, {
       method: 'GET',
@@ -144,13 +223,19 @@ function extractXmlTag(xml: string, tag: string): string {
   return match ? match[1].trim() : '';
 }
 
-export async function getDvrStatusAndChannels(): Promise<{
+export async function getDvrStatusAndChannels(
+  propertyId?: number,
+  configOverride?: DvrConnectionConfig
+): Promise<{
   device: DvrDeviceInfo | null;
   channels: DvrChannelInfo[];
+  source: string;
 }> {
+  const config = configOverride || (await getDvrConfigForProperty(propertyId));
+
   const [devRes, chanRes] = await Promise.all([
-    fetchHikvisionIsapi('/ISAPI/System/deviceInfo'),
-    fetchHikvisionIsapi('/ISAPI/System/Video/inputs/channels'),
+    fetchHikvisionIsapi('/ISAPI/System/deviceInfo', config),
+    fetchHikvisionIsapi('/ISAPI/System/Video/inputs/channels', config),
   ]);
 
   let device: DvrDeviceInfo | null = null;
@@ -182,16 +267,18 @@ export async function getDvrStatusAndChannels(): Promise<{
     }
   }
 
-  return { device, channels };
+  return { device, channels, source: config.source || 'env' };
 }
 
 export async function fetchDvrSnapshot(
   channelId: number,
-  hd = false
+  hd = false,
+  propertyId?: number
 ): Promise<{ buffer: ArrayBuffer; contentType: string } | null> {
+  const config = await getDvrConfigForProperty(propertyId);
   const streamSuffix = hd ? '01' : '02';
   const path = `/ISAPI/Streaming/channels/${channelId}${streamSuffix}/picture`;
-  const res = await fetchHikvisionIsapi(path, 8000);
+  const res = await fetchHikvisionIsapi(path, config, 8000);
   if (!res.ok) return null;
   const buffer = await res.arrayBuffer();
   const contentType = res.headers.get('content-type') || 'image/jpeg';
