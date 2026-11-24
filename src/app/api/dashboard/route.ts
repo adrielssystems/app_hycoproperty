@@ -104,10 +104,11 @@ export async function GET() {
 
     // Invoices (QBO)
     const invoices = await query(`
-      SELECT id, invoice_number, qbo_invoice_id, tenant_name, suite_reference, amount, due_date, status, paid_at
+      SELECT id, invoice_number, qbo_invoice_id, qbo_sync_token, qbo_customer_id, qbo_payment_id,
+             tenant_name, suite_reference, base_rent, cam_amount, amount, due_date, status, notes, paid_at
       FROM invoices
       ORDER BY id DESC
-      LIMIT 20
+      LIMIT 50
     `);
 
     // Tenants

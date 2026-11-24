@@ -24,22 +24,38 @@ import {
   ArrowDownLeft,
   Sparkles,
   Link2,
+  Pencil,
+  Trash2,
+  RefreshCw,
+  CreditCard,
+  Ban,
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
+import { useToast } from '@/context/ToastContext';
 import { NewExpenseModal } from '@/components/billing/NewExpenseModal';
 import { LeaseOverridesModal } from '@/components/billing/LeaseOverridesModal';
+import { InvoiceModal, InvoiceFormRecord } from '@/components/billing/InvoiceModal';
+import { Modal } from '@/components/ui/Modal';
 
 interface Invoice {
   id: number;
   invoice_number: string;
-  qbo_invoice_id: string;
+  qbo_invoice_id: string | null;
+  qbo_sync_token?: string | null;
+  qbo_customer_id?: string | null;
+  qbo_payment_id?: string | null;
   tenant_name: string;
   suite_reference: string;
+  base_rent?: number | string;
+  cam_amount?: number | string;
   amount: number | string;
   due_date: string;
   status: string;
+  notes?: string | null;
   paid_at?: string | null;
 }
+
+const isRealQboId = (id?: string | null): boolean => Boolean(id && /^\d+$/.test(String(id).trim()));
 
 interface ExpenseItem {
   id: number;
@@ -121,6 +137,7 @@ export const BillingView: React.FC<BillingViewProps> = ({
   onRefresh,
 }) => {
   const { language } = useLanguage();
+  const { success: toastSuccess, error: toastError, info: toastInfo } = useToast();
 
   // Active Sub-Tab
   const [subTab, setSubTab] = useState<'invoices' | 'expenses' | 'mappings' | 'cam'>('invoices');
@@ -128,6 +145,15 @@ export const BillingView: React.FC<BillingViewProps> = ({
   // Modals state
   const [isNewExpenseOpen, setIsNewExpenseOpen] = useState(false);
   const [selectedTenantForOverrides, setSelectedTenantForOverrides] = useState<any | null>(null);
+
+  // Phase 1: Live Invoices & QBO Revenue Sync State
+  const [liveInvoices, setLiveInvoices] = useState<Invoice[]>([]);
+  const [qboConnected, setQboConnected] = useState<boolean>(false);
+  const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
+  const [invoiceToEdit, setInvoiceToEdit] = useState<InvoiceFormRecord | null>(null);
+  const [invoiceToRemove, setInvoiceToRemove] = useState<Invoice | null>(null);
+  const [busyInvoiceId, setBusyInvoiceId] = useState<number | null>(null);
+  const [isRemovingInvoice, setIsRemovingInvoice] = useState(false);
 
   // Common filters
   const [selectedPropertyId, setSelectedPropertyId] = useState<number>(1);
@@ -147,8 +173,41 @@ export const BillingView: React.FC<BillingViewProps> = ({
   const [camData, setCamData] = useState<CAMReconciliationData | null>(null);
   const [camLoading, setCamLoading] = useState(false);
 
+  // Load live invoices from /api/invoices
+  const loadInvoices = async () => {
+    try {
+      const res = await fetch('/api/invoices');
+      const data = await res.json();
+      if (data.success && Array.isArray(data.invoices)) {
+        setLiveInvoices(data.invoices);
+        setQboConnected(Boolean(data.qbo_connected));
+      }
+    } catch (err) {
+      console.error('Failed to load live invoices:', err);
+    }
+  };
+
+  useEffect(() => {
+    let active = true;
+    fetch('/api/invoices')
+      .then((res) => res.json())
+      .then((data) => {
+        if (active && data.success && Array.isArray(data.invoices)) {
+          setLiveInvoices(data.invoices);
+          setQboConnected(Boolean(data.qbo_connected));
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to load live invoices:', err);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   // Fallback invoices
   const fallbackInvoices: Invoice[] = useMemo(() => {
+    if (liveInvoices.length > 0) return liveInvoices;
     if (invoices && invoices.length > 0) return invoices;
     return [
       {
@@ -207,16 +266,17 @@ export const BillingView: React.FC<BillingViewProps> = ({
         paid_at: '2027-01-28 17:00',
       },
     ];
-  }, [invoices]);
+  }, [liveInvoices, invoices]);
 
   const filteredInvoices = useMemo(() => {
     return fallbackInvoices.filter((inv) => {
+      const qboIdStr = (inv.qbo_invoice_id || '').toLowerCase();
       const matchSearch =
         !searchQuery ||
         inv.invoice_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
         inv.tenant_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         inv.suite_reference.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        inv.qbo_invoice_id.toLowerCase().includes(searchQuery.toLowerCase());
+        qboIdStr.includes(searchQuery.toLowerCase());
 
       const matchStatus =
         !currentFilter ||
@@ -228,6 +288,109 @@ export const BillingView: React.FC<BillingViewProps> = ({
       return matchSearch && matchStatus;
     });
   }, [fallbackInvoices, searchQuery, currentFilter]);
+
+  const handleSyncInvoiceToQbo = async (inv: Invoice) => {
+    setBusyInvoiceId(inv.id);
+    try {
+      const res = await fetch('/api/invoices', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: inv.id, action: 'sync_qbo' }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'Sync failed');
+
+      toastSuccess(
+        language === 'en'
+          ? `Invoice ${inv.invoice_number} synced live to QuickBooks (#${data.invoice.qbo_invoice_id}).`
+          : `Factura ${inv.invoice_number} sincronizada en vivo en QuickBooks (#${data.invoice.qbo_invoice_id}).`,
+        'QuickBooks Sync'
+      );
+      await loadInvoices();
+      onRefresh?.();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'QuickBooks sync failed';
+      toastError(message, 'QuickBooks Sync Error');
+    } finally {
+      setBusyInvoiceId(null);
+    }
+  };
+
+  const handleRecordPayment = async (inv: Invoice) => {
+    setBusyInvoiceId(inv.id);
+    try {
+      const res = await fetch('/api/invoices', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: inv.id, action: 'record_payment' }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'Payment failed');
+
+      toastSuccess(
+        data.qbo_synced
+          ? language === 'en'
+            ? `Payment recorded in HYCO & QuickBooks Online (Payment #${data.invoice.qbo_payment_id}).`
+            : `Pago registrado en HYCO y QuickBooks Online (Pago #${data.invoice.qbo_payment_id}).`
+          : language === 'en'
+            ? `Invoice ${inv.invoice_number} marked as PAID locally.`
+            : `Factura ${inv.invoice_number} marcada como PAGADA localmente.`,
+        language === 'en' ? 'Payment Recorded' : 'Pago Registrado'
+      );
+      await loadInvoices();
+      onRefresh?.();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to record payment';
+      toastError(message, language === 'en' ? 'Payment Error' : 'Error de Pago');
+    } finally {
+      setBusyInvoiceId(null);
+    }
+  };
+
+  const handleConfirmVoidOrDelete = async (mode: 'void' | 'delete') => {
+    if (!invoiceToRemove) return;
+    setIsRemovingInvoice(true);
+    try {
+      const res = await fetch(`/api/invoices?id=${invoiceToRemove.id}&mode=${mode}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'Operation failed');
+
+      if (mode === 'void') {
+        toastSuccess(
+          data.qbo_synced
+            ? language === 'en'
+              ? `Invoice ${invoiceToRemove.invoice_number} voided in HYCO & QuickBooks Online.`
+              : `Factura ${invoiceToRemove.invoice_number} anulada en HYCO y QuickBooks Online.`
+            : language === 'en'
+              ? `Invoice ${invoiceToRemove.invoice_number} marked as VOIDED.`
+              : `Factura ${invoiceToRemove.invoice_number} marcada como ANULADA.`,
+          language === 'en' ? 'Invoice Voided' : 'Factura Anulada'
+        );
+      } else {
+        toastSuccess(
+          data.qbo_synced
+            ? language === 'en'
+              ? `Invoice ${invoiceToRemove.invoice_number} deleted from HYCO & QuickBooks Online.`
+              : `Factura ${invoiceToRemove.invoice_number} eliminada de HYCO y QuickBooks Online.`
+            : language === 'en'
+              ? `Invoice ${invoiceToRemove.invoice_number} deleted.`
+              : `Factura ${invoiceToRemove.invoice_number} eliminada.`,
+          language === 'en' ? 'Invoice Deleted' : 'Factura Eliminada'
+        );
+      }
+
+      setInvoiceToRemove(null);
+      await loadInvoices();
+      onRefresh?.();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to process invoice';
+      toastError(message, 'QuickBooks Error');
+    } finally {
+      setIsRemovingInvoice(false);
+    }
+  };
 
   // Load Expenses
   const loadExpenses = async () => {
@@ -341,11 +504,10 @@ export const BillingView: React.FC<BillingViewProps> = ({
         <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none p-1">
           <button
             onClick={() => setSubTab('invoices')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
-              subTab === 'invoices'
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${subTab === 'invoices'
                 ? 'bg-gradient-to-r from-[#D4AF37] to-[#B89222] text-[#070D18] shadow-md shadow-[#D4AF37]/20'
                 : 'text-white/60 hover:text-white hover:bg-white/[0.04]'
-            }`}
+              }`}
           >
             <DollarSign size={14} />
             {language === 'en' ? 'Invoices & Receivables' : 'Facturación & Cobros'}
@@ -353,11 +515,10 @@ export const BillingView: React.FC<BillingViewProps> = ({
 
           <button
             onClick={() => setSubTab('expenses')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
-              subTab === 'expenses'
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${subTab === 'expenses'
                 ? 'bg-gradient-to-r from-[#D4AF37] to-[#B89222] text-[#070D18] shadow-md shadow-[#D4AF37]/20'
                 : 'text-white/60 hover:text-white hover:bg-white/[0.04]'
-            }`}
+              }`}
           >
             <Receipt size={14} />
             {language === 'en' ? 'Property Expenses' : 'Gastos Operativos (QBO)'}
@@ -365,11 +526,10 @@ export const BillingView: React.FC<BillingViewProps> = ({
 
           <button
             onClick={() => setSubTab('mappings')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
-              subTab === 'mappings'
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${subTab === 'mappings'
                 ? 'bg-gradient-to-r from-[#D4AF37] to-[#B89222] text-[#070D18] shadow-md shadow-[#D4AF37]/20'
                 : 'text-white/60 hover:text-white hover:bg-white/[0.04]'
-            }`}
+              }`}
           >
             <Sliders size={14} />
             {language === 'en' ? 'QBO Account Mapping' : 'Mapeo Cuentas QBO'}
@@ -377,11 +537,10 @@ export const BillingView: React.FC<BillingViewProps> = ({
 
           <button
             onClick={() => setSubTab('cam')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
-              subTab === 'cam'
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${subTab === 'cam'
                 ? 'bg-gradient-to-r from-[#D4AF37] to-[#B89222] text-[#070D18] shadow-md shadow-[#D4AF37]/20'
                 : 'text-white/60 hover:text-white hover:bg-white/[0.04]'
-            }`}
+              }`}
           >
             <Scale size={14} />
             {language === 'en' ? 'CAM Reconciliation Engine' : 'Motor Conciliación CAM'}
@@ -417,7 +576,53 @@ export const BillingView: React.FC<BillingViewProps> = ({
       {/* SUB-TAB 1: INVOICES & RECEIVABLES                                         */}
       {/* ========================================================================= */}
       {subTab === 'invoices' && (
-        <div className="space-y-6">
+        <div className="space-y-4">
+          {/* Action Bar */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <span
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${qboConnected
+                    ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                    : 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                  }`}
+              >
+                <Link2 size={11} />
+                {qboConnected
+                  ? language === 'en'
+                    ? 'QuickBooks Live A/R Sync'
+                    : 'Sincronización QBO en Vivo'
+                  : language === 'en'
+                    ? 'QBO Disconnected (Local Mode)'
+                    : 'QBO Desconectado (Modo Local)'}
+              </span>
+              <span className="text-[11px] font-mono text-white/45">
+                {filteredInvoices.length} {language === 'en' ? 'invoices' : 'facturas'}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => void loadInvoices()}
+                className="px-3 py-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-white/70 hover:text-white text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <RefreshCw size={13} />
+                <span>{language === 'en' ? 'Refresh' : 'Actualizar'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setInvoiceToEdit(null);
+                  setIsInvoiceModalOpen(true);
+                }}
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#F3D270] via-[#D4AF37] to-[#B89222] text-[#070D18] text-xs font-bold shadow-lg shadow-[#D4AF37]/20 hover:brightness-110 transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <Plus size={15} strokeWidth={2.5} />
+                <span>{language === 'en' ? 'New Invoice (QBO)' : 'Nueva Factura (QBO)'}</span>
+              </button>
+            </div>
+          </div>
+
           {/* Invoices List / Table */}
           <div className="glass-card rounded-2xl border border-white/[0.08] overflow-hidden">
             {/* Desktop Table */}
@@ -425,7 +630,7 @@ export const BillingView: React.FC<BillingViewProps> = ({
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="border-b border-white/[0.06] bg-white/[0.02] text-[11px] font-semibold text-white/50 uppercase tracking-wider">
-                    <th className="py-4 px-6">{language === 'en' ? 'Invoice / Ref' : 'Factura / Ref'}</th>
+                    <th className="py-4 px-6">{language === 'en' ? 'Invoice / QBO Ref' : 'Factura / Ref QBO'}</th>
                     <th className="py-4 px-6">{language === 'en' ? 'Tenant / Recipient' : 'Inquilino / Receptor'}</th>
                     <th className="py-4 px-6">{language === 'en' ? 'Suite / Property' : 'Suite / Propiedad'}</th>
                     <th className="py-4 px-6">{language === 'en' ? 'Amount (USD)' : 'Monto (USD)'}</th>
@@ -435,110 +640,240 @@ export const BillingView: React.FC<BillingViewProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/[0.05] text-xs">
-                  {filteredInvoices.map((inv) => (
-                    <tr key={inv.id} className="hover:bg-white/[0.02] transition-colors group">
-                      <td className="py-4 px-6">
-                        <div className="font-bold text-white group-hover:text-[#F3D270] transition-colors font-mono">
-                          {inv.invoice_number}
-                        </div>
-                        <span className="text-[10px] text-[#D4AF37] font-mono flex items-center gap-1 mt-0.5">
-                          <ShieldCheck size={10} />
-                          {inv.qbo_invoice_id.replace('QBO-', 'REC-')}
-                        </span>
-                      </td>
+                  {filteredInvoices.map((inv) => {
+                    const syncedToQbo = isRealQboId(inv.qbo_invoice_id);
+                    const isBusy = busyInvoiceId === inv.id;
+                    const cleanDue = inv.due_date ? String(inv.due_date).split('T')[0] : '—';
+                    const camAmt = Number(inv.cam_amount) || 0;
+                    const baseAmt =
+                      Number(inv.base_rent) > 0 ? Number(inv.base_rent) : Number(inv.amount) - camAmt;
 
-                      <td className="py-4 px-6">
-                        <div className="font-medium text-white">{inv.tenant_name}</div>
-                        <span className="text-[10px] text-white/40">Auto-Debit ACH</span>
-                      </td>
-
-                      <td className="py-4 px-6">
-                        <span className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white/[0.05] text-white/80 border border-white/[0.08]">
-                          {inv.suite_reference}
-                        </span>
-                      </td>
-
-                      <td className="py-4 px-6">
-                        <div className="font-extrabold text-white text-sm">
-                          ${Number(inv.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                        </div>
-                        <span className="text-[10px] text-white/40">Net 30 Days</span>
-                      </td>
-
-                      <td className="py-4 px-6">
-                        <div className="font-medium text-white/80">{inv.due_date}</div>
-                        {inv.paid_at && (
-                          <span className="text-[10px] text-emerald-400">
-                            {language === 'en' ? 'Paid:' : 'Pagado:'} {inv.paid_at.split(' ')[0]}
-                          </span>
-                        )}
-                      </td>
-
-                      <td className="py-4 px-6">
-                        {inv.status === 'PAID' ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                            <CheckCircle2 size={11} />
-                            {language === 'en' ? 'Paid & Reconciled' : 'Pagado & Conciliado'}
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30">
-                            <Clock size={11} />
-                            {language === 'en' ? 'Pending Payment' : 'Pendiente de Cobro'}
-                          </span>
-                        )}
-                      </td>
-
-                      <td className="py-4 px-6 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() =>
-                              alert(
-                                language === 'en'
-                                  ? `Downloading official invoice ${inv.invoice_number} (PDF)`
-                                  : `Descargando factura oficial ${inv.invoice_number} (PDF)`
-                              )
-                            }
-                            title={language === 'en' ? 'Download PDF Invoice' : 'Descargar Factura PDF'}
-                            className="p-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-white/70 hover:text-white transition-colors cursor-pointer"
-                          >
-                            <Download size={14} />
-                          </button>
-                          {inv.status !== 'PAID' && (
-                            <button
-                              onClick={() => alert(`Enviando recordatorio de pago a ${inv.tenant_name}`)}
-                              title={language === 'en' ? 'Send Payment Reminder' : 'Enviar Recordatorio de Pago'}
-                              className="p-2 rounded-lg bg-[#D4AF37]/10 hover:bg-[#D4AF37]/20 text-[#F3D270] transition-colors cursor-pointer"
-                            >
-                              <Send size={14} />
-                            </button>
+                    return (
+                      <tr key={inv.id} className="hover:bg-white/[0.02] transition-colors group">
+                        <td className="py-4 px-6">
+                          <div className="font-bold text-white group-hover:text-[#F3D270] transition-colors font-mono">
+                            {inv.invoice_number}
+                          </div>
+                          {syncedToQbo ? (
+                            <span className="text-[10px] text-emerald-400 font-mono flex items-center gap-1 mt-0.5">
+                              <ShieldCheck size={10} />
+                              QBO #{inv.qbo_invoice_id}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-white/40 font-mono flex items-center gap-1 mt-0.5">
+                              <Clock size={10} />
+                              {language === 'en' ? 'Local Draft' : 'Local sin QBO'}
+                            </span>
                           )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+
+                        <td className="py-4 px-6">
+                          <div className="font-medium text-white">{inv.tenant_name}</div>
+                          {inv.qbo_payment_id && (
+                            <span className="text-[10px] text-emerald-400/80 font-mono">
+                              QBO Payment #{inv.qbo_payment_id}
+                            </span>
+                          )}
+                        </td>
+
+                        <td className="py-4 px-6">
+                          <span className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white/[0.05] text-white/80 border border-white/[0.08]">
+                            {inv.suite_reference}
+                          </span>
+                        </td>
+
+                        <td className="py-4 px-6">
+                          <div className="font-extrabold text-white text-sm font-mono">
+                            ${Number(inv.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                          </div>
+                          {camAmt > 0 ? (
+                            <span className="text-[10px] text-white/45 font-mono">
+                              Base ${baseAmt.toFixed(0)} + CAM ${camAmt.toFixed(0)}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-white/40">Net 30 Days</span>
+                          )}
+                        </td>
+
+                        <td className="py-4 px-6">
+                          <div className="font-medium text-white/80 font-mono">{cleanDue}</div>
+                          {inv.paid_at && (
+                            <span className="text-[10px] text-emerald-400">
+                              {language === 'en' ? 'Paid:' : 'Pagado:'}{' '}
+                              {String(inv.paid_at).split('T')[0].split(' ')[0]}
+                            </span>
+                          )}
+                        </td>
+
+                        <td className="py-4 px-6">
+                          {inv.status === 'PAID' ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                              <CheckCircle2 size={11} />
+                              {language === 'en' ? 'Paid & Reconciled' : 'Pagado & Conciliado'}
+                            </span>
+                          ) : inv.status === 'VOIDED' ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-white/[0.06] text-white/45 border border-white/[0.1]">
+                              <Ban size={11} />
+                              {language === 'en' ? 'Voided' : 'Anulada'}
+                            </span>
+                          ) : inv.status === 'OVERDUE' ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30">
+                              <AlertCircle size={11} />
+                              {language === 'en' ? 'Overdue' : 'Vencida'}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                              <Clock size={11} />
+                              {language === 'en' ? 'Pending Payment' : 'Pendiente de Cobro'}
+                            </span>
+                          )}
+                        </td>
+
+                        <td className="py-4 px-6 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            {!syncedToQbo && inv.status !== 'VOIDED' && qboConnected && (
+                              <button
+                                type="button"
+                                disabled={isBusy}
+                                onClick={() => void handleSyncInvoiceToQbo(inv)}
+                                title={language === 'en' ? 'Push to QuickBooks Online' : 'Enviar a QuickBooks Online'}
+                                className="px-2 py-1.5 rounded-lg bg-[#D4AF37]/15 hover:bg-[#D4AF37]/25 text-[#F3D270] border border-[#D4AF37]/30 text-[10px] font-bold transition-colors cursor-pointer flex items-center gap-1 disabled:opacity-50"
+                              >
+                                <RefreshCw size={11} className={isBusy ? 'animate-spin' : ''} />
+                                QBO
+                              </button>
+                            )}
+
+                            {inv.status !== 'PAID' && inv.status !== 'VOIDED' && (
+                              <button
+                                type="button"
+                                disabled={isBusy}
+                                onClick={() => void handleRecordPayment(inv)}
+                                title={
+                                  language === 'en'
+                                    ? 'Record Payment (Syncs to QBO)'
+                                    : 'Registrar Pago (Sincroniza en QBO)'
+                                }
+                                className="p-2 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/25 transition-colors cursor-pointer disabled:opacity-50"
+                              >
+                                <CreditCard size={13} />
+                              </button>
+                            )}
+
+                            {inv.status !== 'VOIDED' && (
+                              <button
+                                type="button"
+                                disabled={isBusy}
+                                onClick={() => {
+                                  setInvoiceToEdit(inv);
+                                  setIsInvoiceModalOpen(true);
+                                }}
+                                title={language === 'en' ? 'Edit Invoice & Sync QBO' : 'Editar Factura y Sincronizar QBO'}
+                                className="p-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.1] text-white/70 hover:text-white transition-colors cursor-pointer disabled:opacity-50"
+                              >
+                                <Pencil size={13} />
+                              </button>
+                            )}
+
+                            <button
+                              type="button"
+                              disabled={isBusy}
+                              onClick={() => setInvoiceToRemove(inv)}
+                              title={language === 'en' ? 'Void or Delete Invoice' : 'Anular o Eliminar Factura'}
+                              className="p-2 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-colors cursor-pointer disabled:opacity-50"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
 
             {/* Mobile Responsive Invoices Cards */}
             <div className="block md:hidden p-3 space-y-3">
-              {filteredInvoices.map((inv) => (
-                <div key={inv.id} className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-2.5">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <div className="font-bold text-white text-sm font-mono">{inv.invoice_number}</div>
-                      <div className="text-xs text-white/80 font-medium mt-0.5">{inv.tenant_name}</div>
-                      <div className="text-[11px] text-white/40">{inv.suite_reference}</div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-extrabold text-white text-sm">
-                        ${Number(inv.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              {filteredInvoices.map((inv) => {
+                const syncedToQbo = isRealQboId(inv.qbo_invoice_id);
+                const isBusy = busyInvoiceId === inv.id;
+
+                return (
+                  <div
+                    key={inv.id}
+                    className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-3"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="font-bold text-white text-sm font-mono">{inv.invoice_number}</div>
+                        <div className="text-xs text-white/80 font-medium mt-0.5">{inv.tenant_name}</div>
+                        <div className="text-[11px] text-white/40">{inv.suite_reference}</div>
                       </div>
-                      <span className="text-[10px] text-[#D4AF37] font-mono">{inv.qbo_invoice_id}</span>
+                      <div className="text-right">
+                        <div className="font-extrabold text-white text-sm font-mono">
+                          ${Number(inv.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                        </div>
+                        <span
+                          className={`text-[10px] font-mono ${syncedToQbo ? 'text-emerald-400' : 'text-white/40'
+                            }`}
+                        >
+                          {syncedToQbo ? `QBO #${inv.qbo_invoice_id}` : 'Local'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 pt-2 border-t border-white/[0.05]">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-white/60">
+                        {inv.status}
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        {!syncedToQbo && inv.status !== 'VOIDED' && qboConnected && (
+                          <button
+                            type="button"
+                            disabled={isBusy}
+                            onClick={() => void handleSyncInvoiceToQbo(inv)}
+                            className="px-2 py-1 rounded-lg bg-[#D4AF37]/15 text-[#F3D270] text-[10px] font-bold"
+                          >
+                            QBO
+                          </button>
+                        )}
+                        {inv.status !== 'PAID' && inv.status !== 'VOIDED' && (
+                          <button
+                            type="button"
+                            disabled={isBusy}
+                            onClick={() => void handleRecordPayment(inv)}
+                            className="p-1.5 rounded-lg bg-emerald-500/15 text-emerald-400"
+                          >
+                            <CreditCard size={13} />
+                          </button>
+                        )}
+                        {inv.status !== 'VOIDED' && (
+                          <button
+                            type="button"
+                            disabled={isBusy}
+                            onClick={() => {
+                              setInvoiceToEdit(inv);
+                              setIsInvoiceModalOpen(true);
+                            }}
+                            className="p-1.5 rounded-lg bg-white/[0.06] text-white/80"
+                          >
+                            <Pencil size={13} />
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          disabled={isBusy}
+                          onClick={() => setInvoiceToRemove(inv)}
+                          className="p-1.5 rounded-lg bg-rose-500/10 text-rose-400"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
@@ -856,31 +1191,28 @@ export const BillingView: React.FC<BillingViewProps> = ({
                             <div className="flex items-center justify-end gap-1.5">
                               <button
                                 onClick={() => handleToggleMappingRecovery(m, 'Recoverable')}
-                                className={`px-2 py-1 rounded text-[10px] font-bold transition-all cursor-pointer ${
-                                  m.default_recovery === 'Recoverable'
+                                className={`px-2 py-1 rounded text-[10px] font-bold transition-all cursor-pointer ${m.default_recovery === 'Recoverable'
                                     ? 'bg-emerald-500/25 text-emerald-300 border border-emerald-500/40'
                                     : 'bg-white/[0.03] text-white/40 hover:text-white'
-                                }`}
+                                  }`}
                               >
                                 Recov
                               </button>
                               <button
                                 onClick={() => handleToggleMappingRecovery(m, 'Lease-Specific')}
-                                className={`px-2 py-1 rounded text-[10px] font-bold transition-all cursor-pointer ${
-                                  m.default_recovery === 'Lease-Specific'
+                                className={`px-2 py-1 rounded text-[10px] font-bold transition-all cursor-pointer ${m.default_recovery === 'Lease-Specific'
                                     ? 'bg-amber-500/25 text-amber-300 border border-amber-500/40'
                                     : 'bg-white/[0.03] text-white/40 hover:text-white'
-                                }`}
+                                  }`}
                               >
                                 Lease
                               </button>
                               <button
                                 onClick={() => handleToggleMappingRecovery(m, 'Non-Recoverable')}
-                                className={`px-2 py-1 rounded text-[10px] font-bold transition-all cursor-pointer ${
-                                  m.default_recovery === 'Non-Recoverable'
+                                className={`px-2 py-1 rounded text-[10px] font-bold transition-all cursor-pointer ${m.default_recovery === 'Non-Recoverable'
                                     ? 'bg-rose-500/25 text-rose-300 border border-rose-500/40'
                                     : 'bg-white/[0.03] text-white/40 hover:text-white'
-                                }`}
+                                  }`}
                               >
                                 Non-Rec
                               </button>
@@ -1101,11 +1433,21 @@ export const BillingView: React.FC<BillingViewProps> = ({
 
                             {rec.adjustment_status === 'UNDERBILLED' && (
                               <button
-                                onClick={() =>
-                                  alert(
-                                    `Generando factura de ajuste CAM para ${rec.tenant_name} por $${rec.adjustment_balance.toFixed(2)}`
-                                  )
-                                }
+                                onClick={() => {
+                                  setInvoiceToEdit({
+                                    invoice_number: `CAM-${selectedYear}-${rec.unit_id}`,
+                                    tenant_name: rec.tenant_name,
+                                    suite_reference: rec.unit_number,
+                                    base_rent: 0,
+                                    cam_amount: Number(rec.adjustment_balance.toFixed(2)),
+                                    amount: Number(rec.adjustment_balance.toFixed(2)),
+                                    due_date: new Date(Date.now() + 30 * 86400000)
+                                      .toISOString()
+                                      .split('T')[0],
+                                    notes: `FY ${selectedYear} CAM True-Up Adjustment`,
+                                  });
+                                  setIsInvoiceModalOpen(true);
+                                }}
                                 className="px-2.5 py-1.5 rounded-lg bg-[#D4AF37] hover:bg-[#B89222] text-[#070D18] font-bold text-[11px] shadow transition-all cursor-pointer"
                               >
                                 {language === 'en' ? 'Bill Adjustment' : 'Cobrar Ajuste'}
@@ -1115,8 +1457,11 @@ export const BillingView: React.FC<BillingViewProps> = ({
                             {rec.adjustment_status === 'OVERBILLED' && (
                               <button
                                 onClick={() =>
-                                  alert(
-                                    `Emitiendo nota de crédito CAM para ${rec.tenant_name} por $${Math.abs(rec.adjustment_balance).toFixed(2)}`
+                                  toastInfo(
+                                    language === 'en'
+                                      ? `CAM credit of $${Math.abs(rec.adjustment_balance).toFixed(2)} queued for ${rec.tenant_name}.`
+                                      : `Nota de crédito CAM por $${Math.abs(rec.adjustment_balance).toFixed(2)} preparada para ${rec.tenant_name}.`,
+                                    language === 'en' ? 'CAM Credit Memo' : 'Crédito CAM'
                                   )
                                 }
                                 className="px-2.5 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 font-bold text-[11px] transition-all cursor-pointer"
@@ -1135,6 +1480,79 @@ export const BillingView: React.FC<BillingViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Create / Edit Invoice Modal (Syncs Live to QuickBooks Online) */}
+      <InvoiceModal
+        key={`${isInvoiceModalOpen ? 'open' : 'closed'}-${invoiceToEdit?.id ?? invoiceToEdit?.invoice_number ?? 'new'}`}
+        isOpen={isInvoiceModalOpen}
+        onClose={() => {
+          setIsInvoiceModalOpen(false);
+          setInvoiceToEdit(null);
+        }}
+        invoiceToEdit={invoiceToEdit}
+        onSuccess={() => {
+          void loadInvoices();
+          onRefresh?.();
+        }}
+      />
+
+      {/* Custom Executive Void / Delete Invoice Modal (No Native Confirm) */}
+      <Modal
+        isOpen={Boolean(invoiceToRemove)}
+        onClose={() => !isRemovingInvoice && setInvoiceToRemove(null)}
+        title={language === 'en' ? 'Void or Delete Invoice' : 'Anular o Eliminar Factura'}
+        subtitle={
+          invoiceToRemove
+            ? `${invoiceToRemove.invoice_number} — ${invoiceToRemove.tenant_name}`
+            : undefined
+        }
+        maxWidth="md"
+      >
+        {invoiceToRemove && (
+          <div className="space-y-4">
+            <p className="text-xs text-white/70 leading-relaxed">
+              {isRealQboId(invoiceToRemove.qbo_invoice_id)
+                ? language === 'en'
+                  ? `This invoice is linked to QuickBooks Online (QBO #${invoiceToRemove.qbo_invoice_id}). Choose whether to Void it (sets balance to $0 while keeping accounting audit history) or Permanently Delete it from both HYCO and QuickBooks.`
+                  : `Esta factura está vinculada a QuickBooks Online (QBO #${invoiceToRemove.qbo_invoice_id}). Elige si deseas Anularla (deja saldo $0 conservando auditoría contable) o Eliminarla definitivamente de HYCO y QuickBooks.`
+                : language === 'en'
+                  ? 'Choose whether to mark this local invoice as Voided or Delete it permanently.'
+                  : 'Elige si deseas marcar esta factura local como Anulada o Eliminarla definitivamente.'}
+            </p>
+
+            <div className="flex flex-col sm:flex-row items-center justify-end gap-2.5 pt-3 border-t border-white/[0.08]">
+              <button
+                type="button"
+                disabled={isRemovingInvoice}
+                onClick={() => setInvoiceToRemove(null)}
+                className="w-full sm:w-auto px-4 py-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-white text-xs font-semibold cursor-pointer disabled:opacity-50"
+              >
+                {language === 'en' ? 'Cancel' : 'Cancelar'}
+              </button>
+              {invoiceToRemove.status !== 'VOIDED' && (
+                <button
+                  type="button"
+                  disabled={isRemovingInvoice}
+                  onClick={() => void handleConfirmVoidOrDelete('void')}
+                  className="w-full sm:w-auto px-4 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/35 text-xs font-bold cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
+                >
+                  <Ban size={13} />
+                  <span>{language === 'en' ? 'Void in QBO' : 'Anular en QBO'}</span>
+                </button>
+              )}
+              <button
+                type="button"
+                disabled={isRemovingInvoice}
+                onClick={() => void handleConfirmVoidOrDelete('delete')}
+                className="w-full sm:w-auto px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
+              >
+                <Trash2 size={13} />
+                <span>{language === 'en' ? 'Delete Permanently' : 'Eliminar Definitivo'}</span>
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       {/* New Expense Modal */}
       <NewExpenseModal

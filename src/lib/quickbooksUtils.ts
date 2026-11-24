@@ -551,6 +551,418 @@ export async function fetchQuickBooksItems(tokens: QuickBooksTokenData): Promise
   };
 }
 
+// ==============================================================================
+//   PHASE 1: REVENUE (A/R) WORKFLOW — PLATFORM -> QUICKBOOKS ONLINE (API v3)
+//   Customers, Invoices (Create / Update / Void / Delete), and Payments
+// ==============================================================================
+
+export interface QboInvoicePayload {
+  invoiceNumber: string;
+  tenantName: string;
+  tenantEmail?: string;
+  suiteReference: string;
+  baseRent: number;
+  camAmount: number;
+  dueDate: string; // YYYY-MM-DD
+  notes?: string;
+}
+
+export interface QboInvoiceResult {
+  qboInvoiceId: string;
+  syncToken: string;
+  qboCustomerId: string;
+  docNumber: string;
+  totalAmt: number;
+}
+
+export interface QboPaymentResult {
+  qboPaymentId: string;
+  syncToken: string;
+  totalAmt: number;
+}
+
+interface QboServiceConfigMap {
+  [key: string]: { qb_id?: string; qb_name?: string } | undefined;
+}
+
+function escapeQboQueryValue(value: string): string {
+  return value.replace(/'/g, "\\'");
+}
+
+/**
+ * Checks whether a stored qbo_invoice_id is a real numeric QuickBooks Online Entity ID
+ * (as opposed to a legacy placeholder like 'REC-10492').
+ */
+export function isRealQboEntityId(id?: string | null): boolean {
+  if (!id) return false;
+  return /^\d+$/.test(String(id).trim());
+}
+
+/**
+ * Helper to execute authenticated QuickBooks Online v3 API requests with structured error parsing.
+ */
+async function qboApiRequest<T = Record<string, unknown>>(
+  tokens: QuickBooksTokenData,
+  path: string,
+  options: { method?: 'GET' | 'POST'; body?: unknown } = {}
+): Promise<T> {
+  const baseUrl = getQuickBooksBaseUrl();
+  const separator = path.includes('?') ? '&' : '?';
+  const url = `${baseUrl}/v3/company/${tokens.realmId}${path}${separator}minorversion=65`;
+
+  const response = await fetch(url, {
+    method: options.method || 'GET',
+    headers: {
+      Authorization: `Bearer ${tokens.accessToken}`,
+      Accept: 'application/json',
+      ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+    },
+    ...(options.body ? { body: JSON.stringify(options.body) } : {}),
+  });
+
+  const text = await response.text();
+  let json: Record<string, unknown> = {};
+  try {
+    json = text ? (JSON.parse(text) as Record<string, unknown>) : {};
+  } catch {
+    // Non-JSON response
+  }
+
+  if (!response.ok) {
+    const fault = json.Fault as { Error?: Array<{ Message?: string; Detail?: string }> } | undefined;
+    const faultDetail =
+      fault?.Error?.[0]?.Detail || fault?.Error?.[0]?.Message || text || `HTTP ${response.status}`;
+    throw new Error(`QuickBooks API error (${response.status}): ${faultDetail}`);
+  }
+
+  return json as T;
+}
+
+/**
+ * Finds an existing QuickBooks Customer by DisplayName or creates one automatically.
+ */
+export async function ensureQuickBooksCustomer(
+  tokens: QuickBooksTokenData,
+  displayName: string,
+  email?: string
+): Promise<{ id: string; displayName: string }> {
+  const cleanName = displayName.trim().slice(0, 100);
+  const queryStr = `SELECT Id, DisplayName FROM Customer WHERE DisplayName = '${escapeQboQueryValue(
+    cleanName
+  )}' MAXRESULTS 1`;
+
+  const searchRes = await qboApiRequest<{
+    QueryResponse?: { Customer?: Array<{ Id: string; DisplayName: string }> };
+  }>(tokens, `/query?query=${encodeURIComponent(queryStr)}`);
+
+  const existing = searchRes.QueryResponse?.Customer?.[0];
+  if (existing?.Id) {
+    return { id: existing.Id, displayName: existing.DisplayName };
+  }
+
+  const createPayload: Record<string, unknown> = {
+    DisplayName: cleanName,
+    CompanyName: cleanName,
+  };
+  if (email && email.includes('@')) {
+    createPayload.PrimaryEmailAddr = { Address: email.trim() };
+  }
+
+  const createRes = await qboApiRequest<{
+    Customer?: { Id: string; DisplayName: string };
+  }>(tokens, '/customer', {
+    method: 'POST',
+    body: createPayload,
+  });
+
+  if (!createRes.Customer?.Id) {
+    throw new Error('QuickBooks did not return a Customer ID.');
+  }
+
+  return {
+    id: createRes.Customer.Id,
+    displayName: createRes.Customer.DisplayName,
+  };
+}
+
+/**
+ * Resolves QBO Service Item references from saved service_config mappings,
+ * falling back cleanly to the first active Service/NonInventory item in QBO.
+ */
+async function resolveQboInvoiceItemRefs(tokens: QuickBooksTokenData): Promise<{
+  baseRentItem: { value: string; name: string };
+  camItem: { value: string; name: string };
+}> {
+  const pool = getDbPool();
+  let config: QboServiceConfigMap = {};
+  try {
+    const res = await pool.query(
+      `SELECT service_config FROM settings_integrations WHERE provider = 'quickbooks' LIMIT 1`
+    );
+    config = (res.rows[0]?.service_config || {}) as QboServiceConfigMap;
+  } catch {
+    // Fallback to live lookup
+  }
+
+  const mappedBase = config.base_commercial_rent;
+  const mappedCam = config.cam_operating_recovery;
+
+  if (mappedBase?.qb_id && mappedCam?.qb_id) {
+    return {
+      baseRentItem: { value: mappedBase.qb_id, name: mappedBase.qb_name || 'Base Commercial Rent' },
+      camItem: { value: mappedCam.qb_id, name: mappedCam.qb_name || 'CAM Operating Recovery' },
+    };
+  }
+
+  // Query active billable items in QBO so Sandbox works out-of-the-box even before manual mapping
+  const { rawItems } = await fetchQuickBooksItems(tokens);
+  const billableItems = rawItems.filter(
+    (item) => item.Active && (item.Type === 'Service' || item.Type === 'NonInventory')
+  );
+
+  const fallbackFirst = billableItems[0];
+  if (!fallbackFirst && !mappedBase?.qb_id) {
+    throw new Error(
+      'No active Service items found in QuickBooks Online. Please create at least one Service item in QBO.'
+    );
+  }
+
+  const baseRef = mappedBase?.qb_id
+    ? { value: mappedBase.qb_id, name: mappedBase.qb_name || 'Base Commercial Rent' }
+    : { value: fallbackFirst.Id, name: fallbackFirst.Name };
+
+  const camRef = mappedCam?.qb_id
+    ? { value: mappedCam.qb_id, name: mappedCam.qb_name || 'CAM Operating Recovery' }
+    : billableItems[1]
+    ? { value: billableItems[1].Id, name: billableItems[1].Name }
+    : baseRef;
+
+  return { baseRentItem: baseRef, camItem: camRef };
+}
+
+function buildQboInvoiceLines(
+  input: QboInvoicePayload,
+  refs: { baseRentItem: { value: string; name: string }; camItem: { value: string; name: string } }
+): Array<Record<string, unknown>> {
+  const lines: Array<Record<string, unknown>> = [];
+  const baseAmt = Number(input.baseRent) || 0;
+  const camAmt = Number(input.camAmount) || 0;
+
+  if (baseAmt > 0) {
+    lines.push({
+      Amount: Number(baseAmt.toFixed(2)),
+      DetailType: 'SalesItemLineDetail',
+      Description: `Base Commercial Rent — ${input.suiteReference}`,
+      SalesItemLineDetail: {
+        ItemRef: refs.baseRentItem,
+        Qty: 1,
+        UnitPrice: Number(baseAmt.toFixed(2)),
+      },
+    });
+  }
+
+  if (camAmt > 0) {
+    lines.push({
+      Amount: Number(camAmt.toFixed(2)),
+      DetailType: 'SalesItemLineDetail',
+      Description: `CAM Operating Recovery — ${input.suiteReference}`,
+      SalesItemLineDetail: {
+        ItemRef: refs.camItem,
+        Qty: 1,
+        UnitPrice: Number(camAmt.toFixed(2)),
+      },
+    });
+  }
+
+  if (lines.length === 0) {
+    throw new Error('Invoice must have a positive Base Rent or CAM amount.');
+  }
+
+  return lines;
+}
+
+/**
+ * Creates a live Invoice in QuickBooks Online (auto-creating the Customer if needed).
+ */
+export async function createQuickBooksInvoice(input: QboInvoicePayload): Promise<QboInvoiceResult> {
+  const tokens = await getValidTokens();
+  const customer = await ensureQuickBooksCustomer(tokens, input.tenantName, input.tenantEmail);
+  const itemRefs = await resolveQboInvoiceItemRefs(tokens);
+  const lines = buildQboInvoiceLines(input, itemRefs);
+
+  const today = new Date().toISOString().split('T')[0];
+  const payload = {
+    DocNumber: input.invoiceNumber.slice(0, 21),
+    TxnDate: today,
+    DueDate: input.dueDate,
+    CustomerRef: { value: customer.id, name: customer.displayName },
+    PrivateNote: input.notes
+      ? `${input.suiteReference} | ${input.notes}`
+      : `HYCO Property Management — ${input.suiteReference}`,
+    Line: lines,
+  };
+
+  const res = await qboApiRequest<{
+    Invoice?: { Id: string; SyncToken: string; DocNumber?: string; TotalAmt?: number };
+  }>(tokens, '/invoice', {
+    method: 'POST',
+    body: payload,
+  });
+
+  if (!res.Invoice?.Id) {
+    throw new Error('QuickBooks did not return an Invoice ID.');
+  }
+
+  return {
+    qboInvoiceId: res.Invoice.Id,
+    syncToken: res.Invoice.SyncToken || '0',
+    qboCustomerId: customer.id,
+    docNumber: res.Invoice.DocNumber || input.invoiceNumber,
+    totalAmt: Number(res.Invoice.TotalAmt ?? input.baseRent + input.camAmount),
+  };
+}
+
+/**
+ * Fetches current SyncToken from QuickBooks and updates an existing live Invoice.
+ */
+export async function updateQuickBooksInvoice(
+  qboInvoiceId: string,
+  input: QboInvoicePayload
+): Promise<QboInvoiceResult> {
+  const tokens = await getValidTokens();
+
+  // Always read latest SyncToken from QBO to prevent Error 5010 (Stale Object)
+  const existingRes = await qboApiRequest<{
+    Invoice?: {
+      Id: string;
+      SyncToken: string;
+      CustomerRef?: { value: string; name?: string };
+      TxnDate?: string;
+    };
+  }>(tokens, `/invoice/${encodeURIComponent(qboInvoiceId)}`);
+
+  const existing = existingRes.Invoice;
+  if (!existing?.Id) {
+    throw new Error(`QuickBooks Invoice #${qboInvoiceId} not found.`);
+  }
+
+  const customer = await ensureQuickBooksCustomer(tokens, input.tenantName, input.tenantEmail);
+  const itemRefs = await resolveQboInvoiceItemRefs(tokens);
+  const lines = buildQboInvoiceLines(input, itemRefs);
+
+  const updatePayload = {
+    Id: existing.Id,
+    SyncToken: existing.SyncToken,
+    sparse: true,
+    DocNumber: input.invoiceNumber.slice(0, 21),
+    DueDate: input.dueDate,
+    CustomerRef: { value: customer.id, name: customer.displayName },
+    PrivateNote: input.notes
+      ? `${input.suiteReference} | ${input.notes}`
+      : `HYCO Property Management — ${input.suiteReference}`,
+    Line: lines,
+  };
+
+  const updatedRes = await qboApiRequest<{
+    Invoice?: { Id: string; SyncToken: string; DocNumber?: string; TotalAmt?: number };
+  }>(tokens, '/invoice', {
+    method: 'POST',
+    body: updatePayload,
+  });
+
+  if (!updatedRes.Invoice?.Id) {
+    throw new Error('QuickBooks update did not return an Invoice.');
+  }
+
+  return {
+    qboInvoiceId: updatedRes.Invoice.Id,
+    syncToken: updatedRes.Invoice.SyncToken || existing.SyncToken,
+    qboCustomerId: customer.id,
+    docNumber: updatedRes.Invoice.DocNumber || input.invoiceNumber,
+    totalAmt: Number(updatedRes.Invoice.TotalAmt ?? input.baseRent + input.camAmount),
+  };
+}
+
+/**
+ * Voids (sets balance to $0, preserves audit trail) or permanently deletes an Invoice in QBO.
+ */
+export async function voidOrDeleteQuickBooksInvoice(
+  qboInvoiceId: string,
+  mode: 'void' | 'delete' = 'void'
+): Promise<{ qboInvoiceId: string; mode: 'void' | 'delete' }> {
+  const tokens = await getValidTokens();
+
+  // Fetch latest SyncToken first
+  const existingRes = await qboApiRequest<{
+    Invoice?: { Id: string; SyncToken: string };
+  }>(tokens, `/invoice/${encodeURIComponent(qboInvoiceId)}`);
+
+  const existing = existingRes.Invoice;
+  if (!existing?.Id) {
+    throw new Error(`QuickBooks Invoice #${qboInvoiceId} not found.`);
+  }
+
+  await qboApiRequest(tokens, `/invoice?operation=${mode}`, {
+    method: 'POST',
+    body: {
+      Id: existing.Id,
+      SyncToken: existing.SyncToken,
+    },
+  });
+
+  return { qboInvoiceId: existing.Id, mode };
+}
+
+/**
+ * Records a Customer Payment in QuickBooks Online linked directly to a QBO Invoice.
+ */
+export async function recordQuickBooksPayment(input: {
+  qboCustomerId: string;
+  qboInvoiceId: string;
+  amount: number;
+  txnDate?: string;
+  paymentRefNum?: string;
+}): Promise<QboPaymentResult> {
+  const tokens = await getValidTokens();
+  const txnDate = input.txnDate || new Date().toISOString().split('T')[0];
+  const totalAmt = Number(Number(input.amount).toFixed(2));
+
+  const payload = {
+    CustomerRef: { value: input.qboCustomerId },
+    TotalAmt: totalAmt,
+    TxnDate: txnDate,
+    ...(input.paymentRefNum ? { PaymentRefNum: input.paymentRefNum.slice(0, 21) } : {}),
+    Line: [
+      {
+        Amount: totalAmt,
+        LinkedTxn: [
+          {
+            TxnId: input.qboInvoiceId,
+            TxnType: 'Invoice',
+          },
+        ],
+      },
+    ],
+  };
+
+  const res = await qboApiRequest<{
+    Payment?: { Id: string; SyncToken: string; TotalAmt?: number };
+  }>(tokens, '/payment', {
+    method: 'POST',
+    body: payload,
+  });
+
+  if (!res.Payment?.Id) {
+    throw new Error('QuickBooks did not return a Payment ID.');
+  }
+
+  return {
+    qboPaymentId: res.Payment.Id,
+    syncToken: res.Payment.SyncToken || '0',
+    totalAmt: Number(res.Payment.TotalAmt ?? totalAmt),
+  };
+}
+
 /**
  * Resilient fallback sample products/services for preview/offline mode
  */

@@ -17,6 +17,13 @@ export async function initAndSeedDatabase() {
     await pool.query(`
       ALTER TABLE users ADD COLUMN IF NOT EXISTS allowed_sections TEXT DEFAULT 'overview,properties,tenants,billing,maintenance';
       ALTER TABLE properties ADD COLUMN IF NOT EXISTS legal_name VARCHAR(255);
+      ALTER TABLE invoices ADD COLUMN IF NOT EXISTS qbo_sync_token VARCHAR(50);
+      ALTER TABLE invoices ADD COLUMN IF NOT EXISTS qbo_customer_id VARCHAR(100);
+      ALTER TABLE invoices ADD COLUMN IF NOT EXISTS qbo_payment_id VARCHAR(100);
+      ALTER TABLE invoices ADD COLUMN IF NOT EXISTS base_rent NUMERIC(10, 2) DEFAULT 0;
+      ALTER TABLE invoices ADD COLUMN IF NOT EXISTS cam_amount NUMERIC(10, 2) DEFAULT 0;
+      ALTER TABLE invoices ADD COLUMN IF NOT EXISTS notes TEXT;
+      ALTER TABLE invoices ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
       CREATE TABLE IF NOT EXISTS property_dvr_configs (
         id SERIAL PRIMARY KEY,
         property_id INT UNIQUE REFERENCES properties(id) ON DELETE CASCADE,
