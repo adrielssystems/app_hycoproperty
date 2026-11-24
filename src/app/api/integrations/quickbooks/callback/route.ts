@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { exchangeCodeForTokens } from '@/lib/quickbooksUtils';
+import crypto from 'crypto';
+import { exchangeCodeForTokens, verifyQuickBooksAccess } from '@/lib/quickbooksUtils';
 
 function getPublicOrigin(request: NextRequest): string {
   const forwardedHost = request.headers.get('x-forwarded-host')?.split(',')[0].trim();
@@ -11,8 +12,32 @@ function getPublicOrigin(request: NextRequest): string {
   return `${protocol}://${host}`;
 }
 
+function isStateEqual(a: string, b: string): boolean {
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
+}
+
 export async function GET(request: NextRequest) {
   const origin = getPublicOrigin(request);
+
+  // Strictly enforce SUPER_ADMIN or ADMIN signed session on callback completion
+  const { authenticated, authorized } = await verifyQuickBooksAccess(['SUPER_ADMIN', 'ADMIN']);
+  if (!authenticated) {
+    return NextResponse.redirect(new URL('/login', origin));
+  }
+  if (!authorized) {
+    return NextResponse.redirect(
+      new URL(
+        `/?view=settings&tab=integrations&qb_error=${encodeURIComponent(
+          'Forbidden: Only administrators can authorize QuickBooks.'
+        )}`,
+        origin
+      )
+    );
+  }
+
   const searchParams = request.nextUrl.searchParams;
   const code = searchParams.get('code');
   const realmId = searchParams.get('realmId');
@@ -31,12 +56,12 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Verify CSRF OAuth state parameter
-  if (storedState && state !== storedState) {
+  // Mandatory constant-time CSRF OAuth state verification
+  if (!storedState || !state || !isStateEqual(state, storedState)) {
     return NextResponse.redirect(
       new URL(
         `/?view=settings&tab=integrations&qb_error=${encodeURIComponent(
-          'Invalid OAuth state parameter. Please retry connecting.'
+          'Invalid or expired OAuth CSRF state. Please retry connecting.'
         )}`,
         origin
       )
@@ -61,13 +86,12 @@ export async function GET(request: NextRequest) {
     response.cookies.delete('qb_redirect_uri');
 
     return response;
-  } catch (exchangeErr: any) {
+  } catch (exchangeErr: unknown) {
+    const errMsg = exchangeErr instanceof Error ? exchangeErr.message : 'Token exchange failed';
     console.error('QuickBooks OAuth Callback Error:', exchangeErr);
     return NextResponse.redirect(
       new URL(
-        `/?view=settings&tab=integrations&qb_error=${encodeURIComponent(
-          exchangeErr.message || 'Token exchange failed'
-        )}`,
+        `/?view=settings&tab=integrations&qb_error=${encodeURIComponent(errMsg)}`,
         origin
       )
     );

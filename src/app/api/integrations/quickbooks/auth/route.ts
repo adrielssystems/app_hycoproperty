@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import crypto from 'crypto';
-import { isSessionValid } from '@/lib/auth';
+import { verifyQuickBooksAccess } from '@/lib/quickbooksUtils';
 
 function getPublicOrigin(request: NextRequest): string {
   const forwardedHost = request.headers.get('x-forwarded-host')?.split(',')[0].trim();
@@ -16,25 +15,17 @@ export async function GET(request: NextRequest) {
   const origin = getPublicOrigin(request);
   const isLocal = origin.includes('localhost') || origin.includes('127.0.0.1');
 
-  // 1. Verify admin session
-  const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get('hyco_session');
+  // 1. Strictly enforce SUPER_ADMIN or ADMIN signed session
+  const { authenticated, authorized } = await verifyQuickBooksAccess(['SUPER_ADMIN', 'ADMIN']);
 
-  let isAuthenticated = false;
-  if (sessionCookie?.value) {
-    try {
-      const session = JSON.parse(sessionCookie.value);
-      if (isSessionValid(session)) {
-        isAuthenticated = true;
-      }
-    } catch {
-      // Ignored
-    }
-  }
-
-  // In production, enforce admin authentication
-  if (!isAuthenticated && process.env.NODE_ENV === 'production') {
+  if (!authenticated) {
     return NextResponse.redirect(new URL('/login', origin));
+  }
+  if (!authorized) {
+    return NextResponse.json(
+      { success: false, error: 'Forbidden: Only SUPER_ADMIN or ADMIN can connect QuickBooks.' },
+      { status: 403 }
+    );
   }
 
   // 2. Validate environment credentials

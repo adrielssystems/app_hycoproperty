@@ -30,7 +30,8 @@ export async function GET() {
     response.cookies.set({
       name: 'hyco_session',
       value: JSON.stringify(refreshed),
-      httpOnly: false,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
       path: '/',
       maxAge: 7200, // 2 hours
       sameSite: 'lax',

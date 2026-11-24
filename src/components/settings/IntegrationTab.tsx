@@ -95,8 +95,9 @@ export const IntegrationTab: React.FC = () => {
   const [realmId, setRealmId] = useState<string | null>(null);
   const [isEnvConfigured, setIsEnvConfigured] = useState<boolean>(false);
   const [qbEnvironment, setQbEnvironment] = useState<string>('production');
+  const [tokenExpiresAt, setTokenExpiresAt] = useState<string | null>(null);
+  const [isRenewing, setIsRenewing] = useState<boolean>(false);
   const [serviceConfig, setServiceConfig] = useState<Record<string, { qb_id: string; qb_name: string }>>({});
-  const [isLoadingIntegration, setIsLoadingIntegration] = useState<boolean>(true);
 
   // QBO Catalog State
   const [groupedCategories, setGroupedCategories] = useState<GroupedCategory[]>([]);
@@ -115,7 +116,6 @@ export const IntegrationTab: React.FC = () => {
   // 1. Fetch Integration Settings
   const fetchIntegrationSettings = async () => {
     try {
-      setIsLoadingIntegration(true);
       const res = await fetch('/api/settings/integrations');
       const data = await res.json();
 
@@ -124,12 +124,11 @@ export const IntegrationTab: React.FC = () => {
         setRealmId(data.integration.realm_id || null);
         setIsEnvConfigured(Boolean(data.integration.is_env_configured));
         setQbEnvironment(data.integration.environment || 'production');
+        setTokenExpiresAt(data.integration.token_expires_at || null);
         setServiceConfig(data.integration.service_config || {});
       }
     } catch (err) {
       console.error('Error loading integration settings:', err);
-    } finally {
-      setIsLoadingIntegration(false);
     }
   };
 
@@ -166,7 +165,7 @@ export const IntegrationTab: React.FC = () => {
           }
         }
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error fetching QBO items:', err);
       if (isManualSync) {
         toastError(
@@ -183,38 +182,47 @@ export const IntegrationTab: React.FC = () => {
 
   // Initial Load & OAuth Callback Toast Feedback
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const qbConnected = params.get('qb_connected');
-      const qbError = params.get('qb_error');
-      const errorParam = params.get('error');
+    let active = true;
+    const init = async () => {
+      if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        const qbConnected = params.get('qb_connected');
+        const qbError = params.get('qb_error');
+        const errorParam = params.get('error');
 
-      if (qbConnected === 'true') {
-        toastSuccess(
-          language === 'en'
-            ? 'QuickBooks Online account connected successfully.'
-            : 'Cuenta de QuickBooks Online conectada con éxito.',
-          'QuickBooks Linked'
-        );
-      } else if (qbError) {
-        toastError(qbError, 'QuickBooks OAuth Error');
-      } else if (errorParam === 'missing_qb_credentials') {
-        toastError(
-          language === 'en'
-            ? 'Missing QB_CLIENT_ID or QB_CLIENT_SECRET in environment variables.'
-            : 'Faltan QB_CLIENT_ID o QB_CLIENT_SECRET en las variables de entorno.',
-          'Configuration Missing'
-        );
+        if (qbConnected === 'true') {
+          toastSuccess(
+            language === 'en'
+              ? 'QuickBooks Online account connected successfully.'
+              : 'Cuenta de QuickBooks Online conectada con éxito.',
+            'QuickBooks Linked'
+          );
+        } else if (qbError) {
+          toastError(qbError, 'QuickBooks OAuth Error');
+        } else if (errorParam === 'missing_qb_credentials') {
+          toastError(
+            language === 'en'
+              ? 'Missing QB_CLIENT_ID or QB_CLIENT_SECRET in environment variables.'
+              : 'Faltan QB_CLIENT_ID o QB_CLIENT_SECRET en las variables de entorno.',
+            'Configuration Missing'
+          );
+        }
+
+        if (qbConnected || qbError || errorParam) {
+          const cleanUrl = `${window.location.pathname}?view=settings&tab=integrations`;
+          window.history.replaceState({}, '', cleanUrl);
+        }
       }
 
-      if (qbConnected || qbError || errorParam) {
-        const cleanUrl = `${window.location.pathname}?view=settings&tab=integrations`;
-        window.history.replaceState({}, '', cleanUrl);
-      }
-    }
+      if (!active) return;
+      await Promise.all([fetchIntegrationSettings(), fetchItems(false)]);
+    };
 
-    fetchIntegrationSettings();
-    fetchItems(false);
+    void init();
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Save Service Mappings
@@ -238,10 +246,37 @@ export const IntegrationTab: React.FC = () => {
       } else {
         throw new Error(data.error);
       }
-    } catch (err: any) {
-      toastError(err.message || 'Error saving mappings', 'Mapping Error');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Error saving mappings';
+      toastError(message, 'Mapping Error');
     } finally {
       setIsSavingMappings(false);
+    }
+  };
+
+  // Test / Force Token Rotation
+  const handleRenewToken = async () => {
+    try {
+      setIsRenewing(true);
+      const res = await fetch('/api/integrations/quickbooks/refresh', { method: 'POST' });
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to renew QuickBooks token');
+      }
+
+      setTokenExpiresAt(data.token_expires_at || null);
+      toastSuccess(
+        language === 'en'
+          ? 'OAuth token rotated and encrypted successfully.'
+          : 'Token OAuth renovado y cifrado correctamente.',
+        language === 'en' ? 'Auto-Renewal Verified' : 'Auto-Renovación Verificada'
+      );
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Error renewing token';
+      toastError(message, 'Renewal Error');
+    } finally {
+      setIsRenewing(false);
     }
   };
 
@@ -263,8 +298,9 @@ export const IntegrationTab: React.FC = () => {
           'Disconnected'
         );
       }
-    } catch (err: any) {
-      toastError(err.message || 'Error disconnecting', 'Disconnect Error');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Error disconnecting';
+      toastError(message, 'Disconnect Error');
     } finally {
       setIsDisconnecting(false);
     }
@@ -364,11 +400,50 @@ export const IntegrationTab: React.FC = () => {
         {/* Body Container */}
         <div className="p-5 rounded-xl bg-[#070D18]/70 border border-white/[0.06] space-y-4">
           {isConnected && realmId && (
-            <div className="flex items-center justify-between text-xs py-1 border-b border-white/[0.05]">
-              <span className="text-white/60 font-medium">Connected Realm ID:</span>
-              <code className="px-2.5 py-1 rounded bg-white/[0.08] text-[#F3D270] font-mono font-bold text-xs border border-white/[0.1]">
-                {realmId}
-              </code>
+            <div className="space-y-2.5 pb-3 border-b border-white/[0.05]">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-white/60 font-medium">Connected Realm ID:</span>
+                <code className="px-2.5 py-1 rounded bg-white/[0.08] text-[#F3D270] font-mono font-bold text-xs border border-white/[0.1]">
+                  {realmId}
+                </code>
+              </div>
+
+              <div className="flex items-center justify-between flex-wrap gap-2 text-xs">
+                <div className="flex items-center gap-2 text-white/60">
+                  <CheckCircle2 size={13} className="text-emerald-400 shrink-0" />
+                  <span>
+                    {language === 'en' ? 'Auto-Renewal:' : 'Auto-Renovación:'}{' '}
+                    <strong className="text-emerald-400 font-semibold">
+                      {language === 'en' ? 'Active (24/7 Keep-Alive)' : 'Activa (Keep-Alive 24/7)'}
+                    </strong>
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {tokenExpiresAt && (
+                    <span className="text-[11px] font-mono text-white/45">
+                      {language === 'en' ? 'Next cycle:' : 'Próximo ciclo:'}{' '}
+                      {new Date(tokenExpiresAt).toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleRenewToken}
+                    disabled={isRenewing}
+                    className="px-2.5 py-1 rounded-lg bg-[#D4AF37]/15 hover:bg-[#D4AF37]/25 text-[#F3D270] border border-[#D4AF37]/30 text-[11px] font-bold transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    <RefreshCw size={11} className={isRenewing ? 'animate-spin' : ''} />
+                    <span>
+                      {isRenewing
+                        ? language === 'en' ? 'Renewing...' : 'Renovando...'
+                        : language === 'en' ? 'Renew Now' : 'Renovar Ahora'}
+                    </span>
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 

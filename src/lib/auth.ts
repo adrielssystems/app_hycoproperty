@@ -9,10 +9,27 @@ export interface SessionUser {
   allowed_sections: string[]; // e.g. ['overview', 'properties', 'tenants', 'billing', 'maintenance']
   last_activity: number;
   expires_at: number;
+  sig?: string;
 }
 
-const SESSION_SECRET = process.env.SESSION_SECRET || 'hyco_production_security_key_2026_x89a1';
+function getSessionSecret(): string {
+  return process.env.SESSION_SECRET || 'hyco_production_security_key_2026_x89a1';
+}
+
 const INACTIVITY_TIMEOUT_MS = 2 * 60 * 60 * 1000; // 2 hours of inactivity
+
+/**
+ * Compute HMAC-SHA256 signature for session integrity (prevents cookie tampering / role forgery)
+ */
+export function computeSessionSignature(session: {
+  id: number;
+  email: string;
+  role: string;
+  expires_at: number;
+}): string {
+  const payload = `${session.id}|${session.email.toLowerCase()}|${session.role}|${session.expires_at}`;
+  return crypto.createHmac('sha256', getSessionSecret()).update(payload).digest('hex');
+}
 
 /**
  * Hash password securely using Node.js scrypt with unique cryptographic salt
@@ -65,7 +82,8 @@ export function createSessionData(user: {
   }
 
   const now = Date.now();
-  return {
+  const expires_at = now + INACTIVITY_TIMEOUT_MS;
+  const session: SessionUser = {
     id: user.id,
     name: user.name,
     email: user.email,
@@ -73,27 +91,45 @@ export function createSessionData(user: {
     avatar_url: user.avatar_url,
     allowed_sections: sections,
     last_activity: now,
-    expires_at: now + INACTIVITY_TIMEOUT_MS,
+    expires_at,
   };
+  session.sig = computeSessionSignature(session);
+  return session;
 }
 
 /**
- * Validate session freshness (enforces 2-hour inactivity timeout)
+ * Validate session freshness and HMAC-SHA256 cryptographic signature
  */
 export function isSessionValid(session: SessionUser | null): boolean {
-  if (!session || !session.expires_at) return false;
-  return Date.now() < session.expires_at;
+  if (!session || !session.expires_at || !session.sig || !session.email || !session.role) {
+    return false;
+  }
+  if (Date.now() >= session.expires_at) {
+    return false;
+  }
+  try {
+    const expected = computeSessionSignature(session);
+    const sigBuf = Buffer.from(session.sig, 'hex');
+    const expBuf = Buffer.from(expected, 'hex');
+    if (sigBuf.length !== expBuf.length) return false;
+    return crypto.timingSafeEqual(sigBuf, expBuf);
+  } catch {
+    return false;
+  }
 }
 
 /**
- * Refresh session sliding window on user activity
+ * Refresh session sliding window on user activity and re-sign
  */
 export function refreshSessionExpiration(session: SessionUser): SessionUser {
   const now = Date.now();
-  return {
+  const expires_at = now + INACTIVITY_TIMEOUT_MS;
+  const refreshed: SessionUser = {
     ...session,
     last_activity: now,
-    expires_at: now + INACTIVITY_TIMEOUT_MS,
+    expires_at,
   };
+  refreshed.sig = computeSessionSignature(refreshed);
+  return refreshed;
 }
 

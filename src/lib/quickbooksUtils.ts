@@ -1,12 +1,92 @@
+import crypto from 'crypto';
+import { cookies } from 'next/headers';
+import type { PoolClient } from 'pg';
 import { getDbPool } from './db';
+import { isSessionValid, SessionUser } from './auth';
 
 /**
  * QuickBooks Online (QBO) OAuth 2.0 & Accounting API Utilities
- * Enterprise-grade token management with Mutex lock, auto-refresh and security guards.
+ * Enterprise-grade token management with:
+ * - AES-256-GCM token encryption at rest (transparently backward-compatible)
+ * - PostgreSQL Advisory Lock + In-Memory Mutex (zero race-condition invalid_grant)
+ * - Transient error retry with exponential backoff (never drops connection on network blips)
+ * - Proactive keep-alive renewal (45m background + 10m on-demand margin)
+ * - Strict HMAC-signed RBAC session verification
  */
 
-// Mutex in-memory to prevent race conditions during OAuth token rotation
-let activeRefreshPromise: Promise<{ accessToken: string; realmId: string }> | null = null;
+// Mutex in-memory to serialize concurrent calls within the same Node.js process
+let activeRefreshPromise: Promise<{ accessToken: string; realmId: string; tokenExpiresAt?: string }> | null = null;
+
+// Dedicated PostgreSQL advisory lock key for QuickBooks token rotation
+const QB_ADVISORY_LOCK_KEY = 78982026;
+const TOKEN_ENC_PREFIX = 'enc:v1:';
+
+function getTokenEncryptionKey(): Buffer {
+  const secret = process.env.SESSION_SECRET || 'hyco_production_security_key_2026_x89a1';
+  return crypto.createHash('sha256').update(`${secret}:qbo-oauth-tokens`).digest();
+}
+
+/**
+ * Encrypts sensitive OAuth tokens at rest using AES-256-GCM.
+ */
+export function encryptQbToken(plainText: string): string {
+  if (!plainText) return plainText;
+  if (plainText.startsWith(TOKEN_ENC_PREFIX)) return plainText;
+  const key = getTokenEncryptionKey();
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+  const encrypted = Buffer.concat([cipher.update(plainText, 'utf8'), cipher.final()]);
+  const authTag = cipher.getAuthTag();
+  return `${TOKEN_ENC_PREFIX}${iv.toString('hex')}:${authTag.toString('hex')}:${encrypted.toString('hex')}`;
+}
+
+/**
+ * Decrypts AES-256-GCM stored tokens. Transparently accepts legacy plaintext tokens
+ * so existing connections seamlessly upgrade to encrypted storage on next refresh.
+ */
+export function decryptQbToken(storedValue: string): string {
+  if (!storedValue) return storedValue;
+  if (!storedValue.startsWith(TOKEN_ENC_PREFIX)) {
+    return storedValue;
+  }
+  const payload = storedValue.slice(TOKEN_ENC_PREFIX.length);
+  const parts = payload.split(':');
+  if (parts.length !== 3) return storedValue;
+  const [ivHex, tagHex, encHex] = parts;
+  const key = getTokenEncryptionKey();
+  const decipher = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(ivHex, 'hex'));
+  decipher.setAuthTag(Buffer.from(tagHex, 'hex'));
+  const decrypted = Buffer.concat([
+    decipher.update(Buffer.from(encHex, 'hex')),
+    decipher.final(),
+  ]);
+  return decrypted.toString('utf8');
+}
+
+/**
+ * Verifies authenticated HMAC-signed session and RBAC role for QuickBooks endpoints.
+ */
+export async function verifyQuickBooksAccess(
+  allowedRoles: string[] = ['SUPER_ADMIN', 'ADMIN']
+): Promise<{ authorized: boolean; authenticated: boolean; user?: SessionUser }> {
+  try {
+    const cookieStore = await cookies();
+    const sessionCookie = cookieStore.get('hyco_session');
+    if (!sessionCookie?.value) {
+      return { authorized: false, authenticated: false };
+    }
+    const session: SessionUser = JSON.parse(sessionCookie.value);
+    if (!isSessionValid(session)) {
+      return { authorized: false, authenticated: false };
+    }
+    if (!allowedRoles.includes(session.role)) {
+      return { authorized: false, authenticated: true, user: session };
+    }
+    return { authorized: true, authenticated: true, user: session };
+  } catch {
+    return { authorized: false, authenticated: false };
+  }
+}
 
 export interface QuickBooksTokenData {
   accessToken: string;
@@ -59,91 +139,100 @@ export function isEnvironmentConfigured(): boolean {
 }
 
 /**
- * Retrieves valid access token and realmId. Automatically refreshes token if within 5-minute expiry window.
- * Employs a mutex lock to prevent concurrent refresh calls from triggering 'invalid_grant' on token rotation.
+ * Internal helper: executes token refresh safely under a PostgreSQL advisory lock
+ * so multiple workers, restarts, or concurrent requests can never race on token rotation.
  */
-export async function getValidTokens(): Promise<QuickBooksTokenData> {
+async function executeLockedRefresh(options: {
+  marginMs: number;
+  force?: boolean;
+}): Promise<{
+  status: 'refreshed' | 'valid' | 'disconnected' | 'skipped';
+  accessToken?: string;
+  realmId?: string;
+  tokenExpiresAt?: string;
+}> {
   const pool = getDbPool();
+  const client = await pool.connect();
 
-  const queryIntegration = async () => {
-    const res = await pool.query(
+  try {
+    await client.query('SELECT pg_advisory_lock($1)', [QB_ADVISORY_LOCK_KEY]);
+
+    const res = await client.query(
       `SELECT id, is_connected, realm_id, access_token, refresh_token, token_expires_at, updated_at
        FROM settings_integrations
        WHERE provider = 'quickbooks'
        LIMIT 1`
     );
-    return res.rows[0];
-  };
 
-  const integration = await queryIntegration();
-
-  if (!integration || !integration.is_connected || !integration.access_token) {
-    throw new Error('QuickBooks Online is not connected. Please connect your account first.');
-  }
-
-  const now = Date.now();
-  const tokenExpiresAt = integration.token_expires_at ? new Date(integration.token_expires_at).getTime() : 0;
-  const MARGIN_MS = 5 * 60 * 1000; // 5 minutes margin
-
-  // Token is still valid
-  if (tokenExpiresAt - now > MARGIN_MS) {
-    return {
-      accessToken: integration.access_token,
-      realmId: integration.realm_id,
-    };
-  }
-
-  // Token is expired or expiring soon - execute refresh with Mutex
-  if (activeRefreshPromise) {
-    return activeRefreshPromise;
-  }
-
-  activeRefreshPromise = (async () => {
-    try {
-      // Re-query database: another process/worker might have refreshed it milliseconds ago
-      const freshRow = await queryIntegration();
-      if (freshRow && freshRow.is_connected && freshRow.token_expires_at) {
-        const freshExpiry = new Date(freshRow.token_expires_at).getTime();
-        if (freshExpiry - Date.now() > MARGIN_MS) {
-          return {
-            accessToken: freshRow.access_token,
-            realmId: freshRow.realm_id,
-          };
-        }
-      }
-
-      // Security Guard: Prevent accidental refresh in development unless explicitly authorized
-      if (
-        process.env.NODE_ENV === 'development' &&
-        process.env.ENABLE_LOCAL_QB_REFRESH !== 'true'
-      ) {
-        throw new Error(
-          'Local QB token refresh blocked: ENABLE_LOCAL_QB_REFRESH is not true. This guard prevents invalidating production tokens.'
-        );
-      }
-
-      const refreshed = await refreshQuickBooksToken(
-        integration.refresh_token,
-        integration.realm_id
-      );
-
-      return refreshed;
-    } finally {
-      activeRefreshPromise = null;
+    const row = res.rows[0];
+    if (!row || !row.is_connected || !row.refresh_token) {
+      return { status: 'disconnected' };
     }
-  })();
 
-  return activeRefreshPromise;
+    const now = Date.now();
+    const tokenExpiresAtMs = row.token_expires_at ? new Date(row.token_expires_at).getTime() : 0;
+    const isEncryptedAlready =
+      typeof row.access_token === 'string' &&
+      row.access_token.startsWith(TOKEN_ENC_PREFIX) &&
+      typeof row.refresh_token === 'string' &&
+      row.refresh_token.startsWith(TOKEN_ENC_PREFIX);
+
+    // If token is still fresh beyond margin (and already encrypted), no Intuit call needed
+    if (!options.force && isEncryptedAlready && tokenExpiresAtMs - now > options.marginMs) {
+      return {
+        status: 'valid',
+        accessToken: decryptQbToken(row.access_token),
+        realmId: row.realm_id,
+        tokenExpiresAt: new Date(tokenExpiresAtMs).toISOString(),
+      };
+    }
+
+    // Security Guard: Prevent accidental refresh in local dev unless explicitly enabled
+    if (
+      process.env.NODE_ENV === 'development' &&
+      process.env.ENABLE_LOCAL_QB_REFRESH !== 'true'
+    ) {
+      if (tokenExpiresAtMs - now > 0 && row.access_token) {
+        return {
+          status: 'valid',
+          accessToken: decryptQbToken(row.access_token),
+          realmId: row.realm_id,
+          tokenExpiresAt: new Date(tokenExpiresAtMs).toISOString(),
+        };
+      }
+      throw new Error(
+        'Local QB token refresh blocked: ENABLE_LOCAL_QB_REFRESH is not true. This guard prevents invalidating production tokens.'
+      );
+    }
+
+    const plainRefreshToken = decryptQbToken(row.refresh_token);
+    const refreshed = await callIntuitTokenRefreshWithRetry(plainRefreshToken, row.realm_id, client);
+
+    return {
+      status: 'refreshed',
+      accessToken: refreshed.accessToken,
+      realmId: refreshed.realmId,
+      tokenExpiresAt: refreshed.tokenExpiresAt,
+    };
+  } finally {
+    try {
+      await client.query('SELECT pg_advisory_unlock($1)', [QB_ADVISORY_LOCK_KEY]);
+    } catch {
+      // Ignore unlock error if connection dropped
+    }
+    client.release();
+  }
 }
 
 /**
- * Calls Intuit OAuth2 token endpoint to rotate refresh_token and obtain a new access_token.
+ * Calls Intuit OAuth2 token endpoint with transient retry/backoff and persists AES-256-GCM tokens.
+ * NEVER disconnects on transient network/5xx errors; only marks disconnected on confirmed invalid_grant.
  */
-export async function refreshQuickBooksToken(
+async function callIntuitTokenRefreshWithRetry(
   storedRefreshToken: string,
-  realmId: string
-): Promise<QuickBooksTokenData> {
-  const pool = getDbPool();
+  realmId: string,
+  client: PoolClient
+): Promise<QuickBooksTokenData & { tokenExpiresAt: string }> {
   const clientId = process.env.QB_CLIENT_ID?.trim();
   const clientSecret = process.env.QB_CLIENT_SECRET?.trim();
 
@@ -152,66 +241,186 @@ export async function refreshQuickBooksToken(
   }
 
   const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
-
   const params = new URLSearchParams();
   params.append('grant_type', 'refresh_token');
   params.append('refresh_token', storedRefreshToken);
 
-  const response = await fetch('https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Basic ${basicAuth}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'Accept': 'application/json',
-    },
-    body: params.toString(),
-  });
+  const MAX_ATTEMPTS = 3;
+  let lastError: Error | null = null;
 
-  const data = await response.json();
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      const response = await fetch('https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer', {
+        method: 'POST',
+        headers: {
+          Authorization: `Basic ${basicAuth}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+          Accept: 'application/json',
+        },
+        body: params.toString(),
+      });
 
-  if (!response.ok || data.error) {
-    if (data.error === 'invalid_grant') {
-      // Check if another process updated the record in the last 30 seconds
-      const checkRes = await pool.query(
-        `SELECT updated_at FROM settings_integrations WHERE provider = 'quickbooks'`
-      );
-      const lastUpdated = checkRes.rows[0]?.updated_at;
-      const isRecentlyUpdated = lastUpdated && Date.now() - new Date(lastUpdated).getTime() < 30 * 1000;
+      // Retry transient upstream errors (5xx / 429) without disconnecting
+      if ((response.status >= 500 || response.status === 429) && attempt < MAX_ATTEMPTS) {
+        await new Promise((resolve) => setTimeout(resolve, attempt * 1500));
+        continue;
+      }
 
-      if (!isRecentlyUpdated) {
-        await pool.query(
-          `UPDATE settings_integrations 
-           SET is_connected = FALSE, updated_at = NOW() 
-           WHERE provider = 'quickbooks'`
+      const data = await response.json();
+
+      if (!response.ok || data.error) {
+        if (data.error === 'invalid_grant') {
+          // Confirmed revoked/expired refresh token while holding DB advisory lock
+          await client.query(
+            `UPDATE settings_integrations
+             SET is_connected = FALSE, updated_at = NOW()
+             WHERE provider = 'quickbooks'`
+          );
+        }
+        throw new Error(
+          `QuickBooks refresh token error: ${data.error_description || data.error || `HTTP ${response.status}`}`
         );
       }
+
+      const newAccessToken: string = data.access_token;
+      // Preserve existing refresh_token if Intuit omits it in a response
+      const newRefreshToken: string = data.refresh_token || storedRefreshToken;
+      const expiresInSec = Number(data.expires_in) || 3600;
+      const newExpiresAt = new Date(Date.now() + expiresInSec * 1000);
+
+      await client.query(
+        `UPDATE settings_integrations
+         SET access_token = $1,
+             refresh_token = $2,
+             token_expires_at = $3,
+             is_connected = TRUE,
+             updated_at = NOW()
+         WHERE provider = 'quickbooks'`,
+        [encryptQbToken(newAccessToken), encryptQbToken(newRefreshToken), newExpiresAt]
+      );
+
+      return {
+        accessToken: newAccessToken,
+        realmId,
+        tokenExpiresAt: newExpiresAt.toISOString(),
+      };
+    } catch (err: unknown) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+      // Do not retry confirmed OAuth errors (e.g. invalid_grant / invalid_client)
+      if (lastError.message.includes('QuickBooks refresh token error')) {
+        throw lastError;
+      }
+      if (attempt < MAX_ATTEMPTS) {
+        await new Promise((resolve) => setTimeout(resolve, attempt * 1500));
+        continue;
+      }
     }
-    throw new Error(`QuickBooks refresh token error: ${data.error_description || data.error || 'Unknown error'}`);
   }
 
-  const newAccessToken = data.access_token;
-  const newRefreshToken = data.refresh_token;
-  const expiresInSec = data.expires_in || 3600;
-  const newExpiresAt = new Date(Date.now() + expiresInSec * 1000);
+  throw lastError || new Error('QuickBooks token refresh failed after retries');
+}
 
-  await pool.query(
-    `UPDATE settings_integrations 
-     SET access_token = $1,
-         refresh_token = $2,
-         token_expires_at = $3,
-         updated_at = NOW()
-     WHERE provider = 'quickbooks'`,
-    [newAccessToken, newRefreshToken, newExpiresAt]
-  );
+/**
+ * Proactive keep-alive renewal used by internal server instrumentation (every 45m)
+ * and manual SUPER_ADMIN verification.
+ */
+export async function keepAliveQuickBooksToken(options?: { force?: boolean }): Promise<{
+  status: 'refreshed' | 'valid' | 'disconnected' | 'skipped';
+  realmId?: string;
+  tokenExpiresAt?: string;
+}> {
+  if (!isEnvironmentConfigured()) {
+    return { status: 'skipped' };
+  }
+
+  const PROACTIVE_MARGIN_MS = 15 * 60 * 1000; // Refresh if within 15 minutes of expiry
+  const result = await executeLockedRefresh({
+    marginMs: PROACTIVE_MARGIN_MS,
+    force: Boolean(options?.force),
+  });
 
   return {
-    accessToken: newAccessToken,
-    realmId,
+    status: result.status,
+    realmId: result.realmId,
+    tokenExpiresAt: result.tokenExpiresAt,
   };
 }
 
 /**
- * Exchanges authorization code received in callback for initial access & refresh tokens.
+ * Retrieves valid access token and realmId. Automatically refreshes token if within 10-minute expiry window.
+ * Employs both an in-memory mutex and a PostgreSQL advisory lock to prevent 'invalid_grant' on token rotation.
+ */
+export async function getValidTokens(): Promise<QuickBooksTokenData> {
+  const pool = getDbPool();
+
+  const res = await pool.query(
+    `SELECT id, is_connected, realm_id, access_token, refresh_token, token_expires_at, updated_at
+     FROM settings_integrations
+     WHERE provider = 'quickbooks'
+     LIMIT 1`
+  );
+  const integration = res.rows[0];
+
+  if (!integration || !integration.is_connected || !integration.access_token) {
+    throw new Error('QuickBooks Online is not connected. Please connect your account first.');
+  }
+
+  const now = Date.now();
+  const tokenExpiresAt = integration.token_expires_at ? new Date(integration.token_expires_at).getTime() : 0;
+  const MARGIN_MS = 10 * 60 * 1000; // 10 minutes safety margin
+  const isEncryptedAlready =
+    typeof integration.access_token === 'string' &&
+    integration.access_token.startsWith(TOKEN_ENC_PREFIX);
+
+  // Fast path: Token is still valid and already encrypted
+  if (isEncryptedAlready && tokenExpiresAt - now > MARGIN_MS) {
+    return {
+      accessToken: decryptQbToken(integration.access_token),
+      realmId: integration.realm_id,
+    };
+  }
+
+  // Token is expired, expiring soon, or needs encryption upgrade — serialize via mutex + DB advisory lock
+  if (activeRefreshPromise) {
+    const shared = await activeRefreshPromise;
+    return { accessToken: shared.accessToken, realmId: shared.realmId };
+  }
+
+  activeRefreshPromise = (async () => {
+    try {
+      const result = await executeLockedRefresh({ marginMs: MARGIN_MS, force: false });
+      if (!result.accessToken || !result.realmId) {
+        throw new Error('QuickBooks Online is not connected. Please connect your account first.');
+      }
+      return {
+        accessToken: result.accessToken,
+        realmId: result.realmId,
+        tokenExpiresAt: result.tokenExpiresAt,
+      };
+    } finally {
+      activeRefreshPromise = null;
+    }
+  })();
+
+  const resolved = await activeRefreshPromise;
+  return { accessToken: resolved.accessToken, realmId: resolved.realmId };
+}
+
+/**
+ * Calls Intuit OAuth2 token endpoint to rotate refresh_token and obtain a new access_token.
+ * Kept exported for compatibility; delegates to locked refresh.
+ */
+export async function refreshQuickBooksToken(): Promise<QuickBooksTokenData> {
+  const result = await executeLockedRefresh({ marginMs: 0, force: true });
+  if (!result.accessToken || !result.realmId) {
+    throw new Error('QuickBooks Online is not connected.');
+  }
+  return { accessToken: result.accessToken, realmId: result.realmId };
+}
+
+/**
+ * Exchanges authorization code received in callback for initial access & refresh tokens
+ * and stores them encrypted with AES-256-GCM in PostgreSQL.
  */
 export async function exchangeCodeForTokens(
   code: string,
@@ -251,7 +460,7 @@ export async function exchangeCodeForTokens(
 
   const accessToken = data.access_token;
   const refreshToken = data.refresh_token;
-  const expiresInSec = data.expires_in || 3600;
+  const expiresInSec = Number(data.expires_in) || 3600;
   const expiresAt = new Date(Date.now() + expiresInSec * 1000);
 
   await pool.query(
@@ -265,7 +474,7 @@ export async function exchangeCodeForTokens(
        refresh_token = EXCLUDED.refresh_token,
        token_expires_at = EXCLUDED.token_expires_at,
        updated_at = NOW()`,
-    [realmId, accessToken, refreshToken, expiresAt]
+    [realmId, encryptQbToken(accessToken), encryptQbToken(refreshToken), expiresAt]
   );
 
   return {

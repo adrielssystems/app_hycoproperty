@@ -4,9 +4,21 @@ import {
   fetchQuickBooksItems,
   SAMPLE_QBO_REAL_ESTATE_ITEMS,
   GroupedCategory,
+  verifyQuickBooksAccess,
 } from '@/lib/quickbooksUtils';
 
 export async function GET() {
+  const { authenticated, authorized } = await verifyQuickBooksAccess([
+    'SUPER_ADMIN',
+    'ADMIN',
+    'FINANCE',
+  ]);
+  if (!authenticated) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
+  if (!authorized) {
+    return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
+  }
   try {
     const tokens = await getValidTokens();
     const { groupedCategories, rawItems } = await fetchQuickBooksItems(tokens);
@@ -18,8 +30,9 @@ export async function GET() {
       total: rawItems.length,
       source: 'live',
     });
-  } catch (error: any) {
-    console.warn('QuickBooks live items fetch error, using resilient catalog fallback:', error.message);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Serving synchronized local catalog';
+    console.warn('QuickBooks live items fetch error, using resilient catalog fallback:', message);
 
     // Group sample items by default Real Estate categories
     const fallbackCategories: GroupedCategory[] = [
@@ -41,7 +54,7 @@ export async function GET() {
       rawItems: SAMPLE_QBO_REAL_ESTATE_ITEMS,
       total: SAMPLE_QBO_REAL_ESTATE_ITEMS.length,
       source: 'sample',
-      notice: error.message || 'Serving synchronized local catalog',
+      notice: message,
     });
   }
 }

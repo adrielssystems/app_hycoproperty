@@ -11,7 +11,7 @@ export function proxy(request: NextRequest) {
   if (sessionCookie?.value) {
     try {
       const session = JSON.parse(sessionCookie.value);
-      if (session && session.expires_at && Date.now() < session.expires_at) {
+      if (session && session.expires_at && session.sig && Date.now() < session.expires_at) {
         isAuthenticated = true;
       }
     } catch {

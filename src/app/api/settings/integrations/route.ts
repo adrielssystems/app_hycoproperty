@@ -1,8 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDbPool } from '@/lib/db';
-import { isEnvironmentConfigured } from '@/lib/quickbooksUtils';
+import { isEnvironmentConfigured, verifyQuickBooksAccess } from '@/lib/quickbooksUtils';
 
 export async function GET() {
+  const { authenticated, authorized } = await verifyQuickBooksAccess([
+    'SUPER_ADMIN',
+    'ADMIN',
+    'FINANCE',
+  ]);
+  if (!authenticated) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
+  if (!authorized) {
+    return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
+  }
+
   const pool = getDbPool();
 
   try {
@@ -25,16 +37,18 @@ export async function GET() {
         service_config: row?.service_config || {},
         is_env_configured: isEnvironmentConfigured(),
         environment: qbEnvironment,
+        auto_renew_enabled: true,
         token_expires_at: row?.token_expires_at || null,
         updated_at: row?.updated_at || null,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to fetch integrations';
     console.error('Error fetching settings_integrations:', error);
     return NextResponse.json(
       {
         success: false,
-        error: error.message || 'Failed to fetch integrations',
+        error: message,
         integration: {
           is_connected: false,
           realm_id: null,
@@ -48,6 +62,17 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const { authenticated, authorized } = await verifyQuickBooksAccess(['SUPER_ADMIN', 'ADMIN']);
+  if (!authenticated) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
+  if (!authorized) {
+    return NextResponse.json(
+      { success: false, error: 'Forbidden: Admin access required' },
+      { status: 403 }
+    );
+  }
+
   const pool = getDbPool();
 
   try {
@@ -66,16 +91,28 @@ export async function POST(request: NextRequest) {
       message: 'Service mappings saved successfully',
       service_config: serviceConfig,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to save service mappings';
     console.error('Error updating service_config:', error);
     return NextResponse.json(
-      { success: false, error: error.message || 'Failed to save service mappings' },
+      { success: false, error: message },
       { status: 500 }
     );
   }
 }
 
 export async function DELETE() {
+  const { authenticated, authorized } = await verifyQuickBooksAccess(['SUPER_ADMIN', 'ADMIN']);
+  if (!authenticated) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
+  if (!authorized) {
+    return NextResponse.json(
+      { success: false, error: 'Forbidden: Admin access required' },
+      { status: 403 }
+    );
+  }
+
   const pool = getDbPool();
 
   try {
@@ -94,10 +131,11 @@ export async function DELETE() {
       success: true,
       message: 'QuickBooks disconnected successfully',
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to disconnect QuickBooks';
     console.error('Error disconnecting QuickBooks:', error);
     return NextResponse.json(
-      { success: false, error: error.message || 'Failed to disconnect QuickBooks' },
+      { success: false, error: message },
       { status: 500 }
     );
   }

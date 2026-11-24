@@ -19,22 +19,34 @@ export async function POST(request: Request) {
     // Ensure database is initialized / synced
     try {
       await initAndSeedDatabase();
-    } catch (e: any) {
-      console.warn('Init DB warning:', e?.message || e);
+    } catch (e: unknown) {
+      console.warn('Init DB warning:', e instanceof Error ? e.message : e);
     }
 
     // Query user from PostgreSQL
-    let user: any = null;
+    interface DbUserRecord {
+      id: number;
+      name: string;
+      email: string;
+      password_hash: string;
+      role: string;
+      avatar_url?: string;
+      allowed_sections?: string[] | string;
+    }
+    let user: DbUserRecord | null = null;
     try {
       const users = await query(
         'SELECT id, name, email, password_hash, role, avatar_url, allowed_sections FROM users WHERE LOWER(email) = LOWER($1)',
         [cleanEmail]
       );
       if (users && users.length > 0) {
-        user = users[0];
+        user = users[0] as DbUserRecord;
       }
-    } catch (dbErr: any) {
-      console.warn('DB query in login failed, checking fallback credentials:', dbErr?.message || dbErr);
+    } catch (dbErr: unknown) {
+      console.warn(
+        'DB query in login failed, checking fallback credentials:',
+        dbErr instanceof Error ? dbErr.message : dbErr
+      );
     }
 
     // Fallback emergency admin ONLY if defined in environment variables and DB query failed
@@ -91,21 +103,23 @@ export async function POST(request: Request) {
       user: sessionData,
     });
 
-    // 2 hours of inactivity session cookie (7200 seconds)
+    // 2 hours of inactivity session cookie (7200 seconds) - HttpOnly + HMAC signed
     response.cookies.set({
       name: 'hyco_session',
       value: JSON.stringify(sessionData),
-      httpOnly: false,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
       path: '/',
       maxAge: 7200, // 2 hours
       sameSite: 'lax',
     });
 
     return response;
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unexpected server error';
     console.error('Login error:', error);
     return NextResponse.json(
-      { success: false, message: 'Error de servidor: ' + error.message },
+      { success: false, message: 'Error de servidor: ' + message },
       { status: 500 }
     );
   }
