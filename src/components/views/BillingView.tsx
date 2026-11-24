@@ -333,8 +333,8 @@ export const BillingView: React.FC<BillingViewProps> = ({
             ? `Payment recorded in HYCO & QuickBooks Online (Payment #${data.invoice.qbo_payment_id}).`
             : `Pago registrado en HYCO y QuickBooks Online (Pago #${data.invoice.qbo_payment_id}).`
           : language === 'en'
-            ? `Invoice ${inv.invoice_number} marked as PAID locally.`
-            : `Factura ${inv.invoice_number} marcada como PAGADA localmente.`,
+          ? `Invoice ${inv.invoice_number} marked as PAID locally.`
+          : `Factura ${inv.invoice_number} marcada como PAGADA localmente.`,
         language === 'en' ? 'Payment Recorded' : 'Pago Registrado'
       );
       await loadInvoices();
@@ -364,8 +364,8 @@ export const BillingView: React.FC<BillingViewProps> = ({
               ? `Invoice ${invoiceToRemove.invoice_number} voided in HYCO & QuickBooks Online.`
               : `Factura ${invoiceToRemove.invoice_number} anulada en HYCO y QuickBooks Online.`
             : language === 'en'
-              ? `Invoice ${invoiceToRemove.invoice_number} marked as VOIDED.`
-              : `Factura ${invoiceToRemove.invoice_number} marcada como ANULADA.`,
+            ? `Invoice ${invoiceToRemove.invoice_number} marked as VOIDED.`
+            : `Factura ${invoiceToRemove.invoice_number} marcada como ANULADA.`,
           language === 'en' ? 'Invoice Voided' : 'Factura Anulada'
         );
       } else {
@@ -375,8 +375,8 @@ export const BillingView: React.FC<BillingViewProps> = ({
               ? `Invoice ${invoiceToRemove.invoice_number} deleted from HYCO & QuickBooks Online.`
               : `Factura ${invoiceToRemove.invoice_number} eliminada de HYCO y QuickBooks Online.`
             : language === 'en'
-              ? `Invoice ${invoiceToRemove.invoice_number} deleted.`
-              : `Factura ${invoiceToRemove.invoice_number} eliminada.`,
+            ? `Invoice ${invoiceToRemove.invoice_number} deleted.`
+            : `Factura ${invoiceToRemove.invoice_number} eliminada.`,
           language === 'en' ? 'Invoice Deleted' : 'Factura Eliminada'
         );
       }
@@ -504,10 +504,11 @@ export const BillingView: React.FC<BillingViewProps> = ({
         <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none p-1">
           <button
             onClick={() => setSubTab('invoices')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${subTab === 'invoices'
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
+              subTab === 'invoices'
                 ? 'bg-gradient-to-r from-[#D4AF37] to-[#B89222] text-[#070D18] shadow-md shadow-[#D4AF37]/20'
                 : 'text-white/60 hover:text-white hover:bg-white/[0.04]'
-              }`}
+            }`}
           >
             <DollarSign size={14} />
             {language === 'en' ? 'Invoices & Receivables' : 'Facturación & Cobros'}
@@ -515,10 +516,11 @@ export const BillingView: React.FC<BillingViewProps> = ({
 
           <button
             onClick={() => setSubTab('expenses')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${subTab === 'expenses'
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
+              subTab === 'expenses'
                 ? 'bg-gradient-to-r from-[#D4AF37] to-[#B89222] text-[#070D18] shadow-md shadow-[#D4AF37]/20'
                 : 'text-white/60 hover:text-white hover:bg-white/[0.04]'
-              }`}
+            }`}
           >
             <Receipt size={14} />
             {language === 'en' ? 'Property Expenses' : 'Gastos Operativos (QBO)'}
@@ -526,10 +528,11 @@ export const BillingView: React.FC<BillingViewProps> = ({
 
           <button
             onClick={() => setSubTab('mappings')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${subTab === 'mappings'
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
+              subTab === 'mappings'
                 ? 'bg-gradient-to-r from-[#D4AF37] to-[#B89222] text-[#070D18] shadow-md shadow-[#D4AF37]/20'
                 : 'text-white/60 hover:text-white hover:bg-white/[0.04]'
-              }`}
+            }`}
           >
             <Sliders size={14} />
             {language === 'en' ? 'QBO Account Mapping' : 'Mapeo Cuentas QBO'}
@@ -537,10 +540,11 @@ export const BillingView: React.FC<BillingViewProps> = ({
 
           <button
             onClick={() => setSubTab('cam')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${subTab === 'cam'
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
+              subTab === 'cam'
                 ? 'bg-gradient-to-r from-[#D4AF37] to-[#B89222] text-[#070D18] shadow-md shadow-[#D4AF37]/20'
                 : 'text-white/60 hover:text-white hover:bg-white/[0.04]'
-              }`}
+            }`}
           >
             <Scale size={14} />
             {language === 'en' ? 'CAM Reconciliation Engine' : 'Motor Conciliación CAM'}
@@ -581,10 +585,11 @@ export const BillingView: React.FC<BillingViewProps> = ({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2.5">
               <span
-                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${qboConnected
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
+                  qboConnected
                     ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
                     : 'bg-amber-500/15 text-amber-300 border-amber-500/30'
-                  }`}
+                }`}
               >
                 <Link2 size={11} />
                 {qboConnected
@@ -592,8 +597,8 @@ export const BillingView: React.FC<BillingViewProps> = ({
                     ? 'QuickBooks Live A/R Sync'
                     : 'Sincronización QBO en Vivo'
                   : language === 'en'
-                    ? 'QBO Disconnected (Local Mode)'
-                    : 'QBO Desconectado (Modo Local)'}
+                  ? 'QBO Disconnected (Local Mode)'
+                  : 'QBO Desconectado (Modo Local)'}
               </span>
               <span className="text-[11px] font-mono text-white/45">
                 {filteredInvoices.length} {language === 'en' ? 'invoices' : 'facturas'}
@@ -815,8 +820,9 @@ export const BillingView: React.FC<BillingViewProps> = ({
                           ${Number(inv.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                         </div>
                         <span
-                          className={`text-[10px] font-mono ${syncedToQbo ? 'text-emerald-400' : 'text-white/40'
-                            }`}
+                          className={`text-[10px] font-mono ${
+                            syncedToQbo ? 'text-emerald-400' : 'text-white/40'
+                          }`}
                         >
                           {syncedToQbo ? `QBO #${inv.qbo_invoice_id}` : 'Local'}
                         </span>
@@ -1191,28 +1197,31 @@ export const BillingView: React.FC<BillingViewProps> = ({
                             <div className="flex items-center justify-end gap-1.5">
                               <button
                                 onClick={() => handleToggleMappingRecovery(m, 'Recoverable')}
-                                className={`px-2 py-1 rounded text-[10px] font-bold transition-all cursor-pointer ${m.default_recovery === 'Recoverable'
+                                className={`px-2 py-1 rounded text-[10px] font-bold transition-all cursor-pointer ${
+                                  m.default_recovery === 'Recoverable'
                                     ? 'bg-emerald-500/25 text-emerald-300 border border-emerald-500/40'
                                     : 'bg-white/[0.03] text-white/40 hover:text-white'
-                                  }`}
+                                }`}
                               >
                                 Recov
                               </button>
                               <button
                                 onClick={() => handleToggleMappingRecovery(m, 'Lease-Specific')}
-                                className={`px-2 py-1 rounded text-[10px] font-bold transition-all cursor-pointer ${m.default_recovery === 'Lease-Specific'
+                                className={`px-2 py-1 rounded text-[10px] font-bold transition-all cursor-pointer ${
+                                  m.default_recovery === 'Lease-Specific'
                                     ? 'bg-amber-500/25 text-amber-300 border border-amber-500/40'
                                     : 'bg-white/[0.03] text-white/40 hover:text-white'
-                                  }`}
+                                }`}
                               >
                                 Lease
                               </button>
                               <button
                                 onClick={() => handleToggleMappingRecovery(m, 'Non-Recoverable')}
-                                className={`px-2 py-1 rounded text-[10px] font-bold transition-all cursor-pointer ${m.default_recovery === 'Non-Recoverable'
+                                className={`px-2 py-1 rounded text-[10px] font-bold transition-all cursor-pointer ${
+                                  m.default_recovery === 'Non-Recoverable'
                                     ? 'bg-rose-500/25 text-rose-300 border border-rose-500/40'
                                     : 'bg-white/[0.03] text-white/40 hover:text-white'
-                                  }`}
+                                }`}
                               >
                                 Non-Rec
                               </button>
@@ -1516,8 +1525,8 @@ export const BillingView: React.FC<BillingViewProps> = ({
                   ? `This invoice is linked to QuickBooks Online (QBO #${invoiceToRemove.qbo_invoice_id}). Choose whether to Void it (sets balance to $0 while keeping accounting audit history) or Permanently Delete it from both HYCO and QuickBooks.`
                   : `Esta factura está vinculada a QuickBooks Online (QBO #${invoiceToRemove.qbo_invoice_id}). Elige si deseas Anularla (deja saldo $0 conservando auditoría contable) o Eliminarla definitivamente de HYCO y QuickBooks.`
                 : language === 'en'
-                  ? 'Choose whether to mark this local invoice as Voided or Delete it permanently.'
-                  : 'Elige si deseas marcar esta factura local como Anulada o Eliminarla definitivamente.'}
+                ? 'Choose whether to mark this local invoice as Voided or Delete it permanently.'
+                : 'Elige si deseas marcar esta factura local como Anulada o Eliminarla definitivamente.'}
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-end gap-2.5 pt-3 border-t border-white/[0.08]">
