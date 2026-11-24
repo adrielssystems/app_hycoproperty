@@ -2,7 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { exchangeCodeForTokens } from '@/lib/quickbooksUtils';
 
+function getPublicOrigin(request: NextRequest): string {
+  const forwardedHost = request.headers.get('x-forwarded-host')?.split(',')[0].trim();
+  const host = forwardedHost || request.headers.get('host') || 'localhost:3000';
+  const isLocal = host.includes('localhost') || host.includes('127.0.0.1');
+  const forwardedProto = request.headers.get('x-forwarded-proto')?.split(',')[0].trim() || 'http';
+  const protocol = isLocal ? forwardedProto : 'https';
+  return `${protocol}://${host}`;
+}
+
 export async function GET(request: NextRequest) {
+  const origin = getPublicOrigin(request);
   const searchParams = request.nextUrl.searchParams;
   const code = searchParams.get('code');
   const realmId = searchParams.get('realmId');
@@ -17,7 +27,7 @@ export async function GET(request: NextRequest) {
   if (error || !code || !realmId) {
     const errorMsg = error || 'Missing authorization code or Realm ID from QuickBooks';
     return NextResponse.redirect(
-      new URL(`/?view=settings&tab=integrations&qb_error=${encodeURIComponent(errorMsg)}`, request.url)
+      new URL(`/?view=settings&tab=integrations&qb_error=${encodeURIComponent(errorMsg)}`, origin)
     );
   }
 
@@ -28,18 +38,14 @@ export async function GET(request: NextRequest) {
         `/?view=settings&tab=integrations&qb_error=${encodeURIComponent(
           'Invalid OAuth state parameter. Please retry connecting.'
         )}`,
-        request.url
+        origin
       )
     );
   }
 
   // Fallback redirectUri calculation if cookie is missing
   if (!redirectUri) {
-    const forwardedProto = request.headers.get('x-forwarded-proto') || 'http';
-    const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || 'localhost:3000';
-    const isLocal = host.includes('localhost') || host.includes('127.0.0.1');
-    const protocol = isLocal ? forwardedProto : 'https';
-    redirectUri = `${protocol}://${host}/api/integrations/quickbooks/callback`;
+    redirectUri = `${origin}/api/integrations/quickbooks/callback`;
   }
 
   try {
@@ -47,7 +53,7 @@ export async function GET(request: NextRequest) {
     await exchangeCodeForTokens(code, redirectUri, realmId);
 
     const response = NextResponse.redirect(
-      new URL('/?view=settings&tab=integrations&qb_connected=true', request.url)
+      new URL('/?view=settings&tab=integrations&qb_connected=true', origin)
     );
 
     // Clean up temporary OAuth cookies
@@ -62,7 +68,7 @@ export async function GET(request: NextRequest) {
         `/?view=settings&tab=integrations&qb_error=${encodeURIComponent(
           exchangeErr.message || 'Token exchange failed'
         )}`,
-        request.url
+        origin
       )
     );
   }

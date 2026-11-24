@@ -3,7 +3,19 @@ import { cookies } from 'next/headers';
 import crypto from 'crypto';
 import { isSessionValid } from '@/lib/auth';
 
+function getPublicOrigin(request: NextRequest): string {
+  const forwardedHost = request.headers.get('x-forwarded-host')?.split(',')[0].trim();
+  const host = forwardedHost || request.headers.get('host') || 'localhost:3000';
+  const isLocal = host.includes('localhost') || host.includes('127.0.0.1');
+  const forwardedProto = request.headers.get('x-forwarded-proto')?.split(',')[0].trim() || 'http';
+  const protocol = isLocal ? forwardedProto : 'https';
+  return `${protocol}://${host}`;
+}
+
 export async function GET(request: NextRequest) {
+  const origin = getPublicOrigin(request);
+  const isLocal = origin.includes('localhost') || origin.includes('127.0.0.1');
+
   // 1. Verify admin session
   const cookieStore = await cookies();
   const sessionCookie = cookieStore.get('hyco_session');
@@ -22,24 +34,19 @@ export async function GET(request: NextRequest) {
 
   // In production, enforce admin authentication
   if (!isAuthenticated && process.env.NODE_ENV === 'production') {
-    return NextResponse.redirect(new URL('/login', request.url));
+    return NextResponse.redirect(new URL('/login', origin));
   }
 
   // 2. Validate environment credentials
   const clientId = process.env.QB_CLIENT_ID?.trim();
   if (!clientId) {
     return NextResponse.redirect(
-      new URL('/?view=settings&tab=integrations&error=missing_qb_credentials', request.url)
+      new URL('/?view=settings&tab=integrations&error=missing_qb_credentials', origin)
     );
   }
 
   // 3. Resolve redirectUri behind reverse proxies (Easypanel, Traefik, Cloudflare)
-  const forwardedProto = request.headers.get('x-forwarded-proto') || 'http';
-  const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || 'localhost:3000';
-  const isLocal = host.includes('localhost') || host.includes('127.0.0.1');
-  const protocol = isLocal ? forwardedProto : 'https';
-
-  const redirectUri = `${protocol}://${host}/api/integrations/quickbooks/callback`;
+  const redirectUri = `${origin}/api/integrations/quickbooks/callback`;
 
   // 4. Generate random state for CSRF protection
   const state = crypto.randomBytes(16).toString('hex');
