@@ -19,6 +19,7 @@ import {
 import { useLanguage } from '@/context/LanguageContext';
 import { useToast } from '@/context/ToastContext';
 import { GroupedCategory, QuickBooksItem } from '@/lib/quickbooksUtils';
+import { QboImportPanel } from '@/components/settings/QboImportPanel';
 
 // HYCO Commercial Real Estate Internal Services to Map
 const INTERNAL_SERVICES = [
@@ -486,7 +487,12 @@ export const IntegrationTab: React.FC = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* CARD 2: SERVICE ITEM MAPPINGS (VISIBLE WHEN is_connected === true)        */}
+      {/* CARD 2: LIVE QBO IMPORT & PHASE 2 EXPENSE SYNC (WHEN CONNECTED)          */}
+      {/* ========================================================================= */}
+      {isConnected && <QboImportPanel />}
+
+      {/* ========================================================================= */}
+      {/* CARD 3: SERVICE ITEM MAPPINGS (VISIBLE WHEN is_connected === true)        */}
       {/* ========================================================================= */}
       {isConnected && (
         <div className="glass-card rounded-2xl border border-white/[0.08] p-6 sm:p-7 shadow-xl space-y-6">

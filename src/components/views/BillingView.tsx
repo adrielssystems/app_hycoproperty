@@ -162,6 +162,7 @@ export const BillingView: React.FC<BillingViewProps> = ({
   // Sub-tab 2: Expenses State
   const [expenses, setExpenses] = useState<ExpenseItem[]>([]);
   const [expensesLoading, setExpensesLoading] = useState(false);
+  const [isSyncingQboExpenses, setIsSyncingQboExpenses] = useState(false);
 
   // Sub-tab 3: Mappings State
   const [mappings, setMappings] = useState<QBOAccountMapping[]>([]);
@@ -389,6 +390,38 @@ export const BillingView: React.FC<BillingViewProps> = ({
       toastError(message, 'QuickBooks Error');
     } finally {
       setIsRemovingInvoice(false);
+    }
+  };
+
+  const handleSyncQboExpenses = async () => {
+    setIsSyncingQboExpenses(true);
+    try {
+      const res = await fetch('/api/integrations/quickbooks/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          import_accounts: true,
+          import_expenses: true,
+          default_property_id: selectedPropertyId,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'Expense sync failed');
+
+      const totalSynced = (data.stats?.expenses_imported || 0) + (data.stats?.expenses_updated || 0);
+      toastSuccess(
+        language === 'en'
+          ? `Synced ${totalSynced} Bills & Expenses and ${data.stats?.accounts_synced || 0} accounts from QuickBooks Online.`
+          : `Sincronizados ${totalSynced} gastos y ${data.stats?.accounts_synced || 0} cuentas desde QuickBooks Online.`,
+        'QuickBooks Expense Sync'
+      );
+      await loadExpenses();
+      if (subTab === 'cam') await loadCAMReconciliation();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to sync expenses from QBO';
+      toastError(message, 'QuickBooks Sync Error');
+    } finally {
+      setIsSyncingQboExpenses(false);
     }
   };
 
@@ -965,19 +998,38 @@ export const BillingView: React.FC<BillingViewProps> = ({
           </div>
 
           {/* Action Bar */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="text-xs text-white/50">
               {language === 'en'
                 ? 'Showing operating expenses synchronized from QuickBooks Online for this property.'
                 : 'Mostrando gastos operativos sincronizados desde QuickBooks Online para esta propiedad.'}
             </div>
-            <button
-              onClick={() => setIsNewExpenseOpen(true)}
-              className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#D4AF37] to-[#B89222] text-[#070D18] text-xs font-bold shadow-lg hover:brightness-110 transition-all cursor-pointer flex items-center gap-1.5"
-            >
-              <Plus size={15} />
-              {language === 'en' ? 'Record Expense' : 'Registrar Gasto'}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => void handleSyncQboExpenses()}
+                disabled={isSyncingQboExpenses}
+                className="px-3.5 py-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+              >
+                <RefreshCw size={13} className={isSyncingQboExpenses ? 'animate-spin' : ''} />
+                <span>
+                  {isSyncingQboExpenses
+                    ? language === 'en'
+                      ? 'Syncing QBO...'
+                      : 'Sincronizando QBO...'
+                    : language === 'en'
+                    ? 'Sync Expenses from QBO'
+                    : 'Importar Gastos de QBO'}
+                </span>
+              </button>
+              <button
+                onClick={() => setIsNewExpenseOpen(true)}
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#D4AF37] to-[#B89222] text-[#070D18] text-xs font-bold shadow-lg hover:brightness-110 transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <Plus size={15} />
+                {language === 'en' ? 'Record Expense' : 'Registrar Gasto'}
+              </button>
+            </div>
           </div>
 
           {/* Expenses Table */}

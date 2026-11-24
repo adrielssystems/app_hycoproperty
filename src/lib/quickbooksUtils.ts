@@ -963,6 +963,352 @@ export async function recordQuickBooksPayment(input: {
   };
 }
 
+// ==============================================================================
+//   PHASE 2 & MIGRATION: READ / IMPORT FROM QUICKBOOKS ONLINE -> PLATFORM
+//   Accounts, Bills, Purchases (Expenses/Cards), Invoices, Customers, Classes
+// ==============================================================================
+
+export interface QboAccountRecord {
+  id: string;
+  name: string;
+  fullyQualifiedName: string;
+  accountType: string;
+  accountSubType: string;
+  classification: string;
+  currentBalance: number;
+}
+
+export interface QboCustomerRecord {
+  id: string;
+  displayName: string;
+  companyName: string;
+  email: string;
+  phone: string;
+  balance: number;
+  isSubCustomer: boolean;
+  parentName?: string;
+}
+
+export interface QboHistoricalInvoiceRecord {
+  id: string;
+  syncToken: string;
+  docNumber: string;
+  txnDate: string;
+  dueDate: string;
+  totalAmt: number;
+  balance: number;
+  customerId: string;
+  customerName: string;
+  privateNote: string;
+  status: 'PAID' | 'PENDING' | 'OVERDUE';
+}
+
+export interface QboNormalizedExpenseRecord {
+  qboExpenseId: string;
+  sourceType: 'Bill' | 'Purchase';
+  vendorName: string;
+  accountId: string;
+  accountName: string;
+  className: string | null;
+  departmentName: string | null;
+  amount: number;
+  expenseDate: string;
+  fiscalYear: number;
+  paymentMethod: string;
+  description: string;
+}
+
+export interface QboPropertyRefRecord {
+  id: string;
+  name: string;
+  source: 'Class' | 'Department';
+}
+
+export async function fetchQuickBooksAccounts(
+  existingTokens?: QuickBooksTokenData
+): Promise<QboAccountRecord[]> {
+  const tokens = existingTokens || (await getValidTokens());
+  const q = 'SELECT * FROM Account WHERE Active = true MAXRESULTS 1000';
+  const res = await qboApiRequest<{
+    QueryResponse?: {
+      Account?: Array<{
+        Id: string;
+        Name: string;
+        FullyQualifiedName?: string;
+        AccountType?: string;
+        AccountSubType?: string;
+        Classification?: string;
+        CurrentBalance?: number;
+      }>;
+    };
+  }>(tokens, `/query?query=${encodeURIComponent(q)}`);
+
+  return (res.QueryResponse?.Account || []).map((a) => ({
+    id: String(a.Id),
+    name: a.Name || '',
+    fullyQualifiedName: a.FullyQualifiedName || a.Name || '',
+    accountType: a.AccountType || 'Expense',
+    accountSubType: a.AccountSubType || '',
+    classification: a.Classification || '',
+    currentBalance: Number(a.CurrentBalance || 0),
+  }));
+}
+
+export async function fetchQuickBooksCustomers(
+  existingTokens?: QuickBooksTokenData
+): Promise<QboCustomerRecord[]> {
+  const tokens = existingTokens || (await getValidTokens());
+  const q = 'SELECT * FROM Customer WHERE Active = true MAXRESULTS 1000';
+  const res = await qboApiRequest<{
+    QueryResponse?: {
+      Customer?: Array<{
+        Id: string;
+        DisplayName?: string;
+        CompanyName?: string;
+        PrimaryEmailAddr?: { Address?: string };
+        PrimaryPhone?: { FreeFormNumber?: string };
+        Balance?: number;
+        Job?: boolean;
+        ParentRef?: { value?: string; name?: string };
+      }>;
+    };
+  }>(tokens, `/query?query=${encodeURIComponent(q)}`);
+
+  return (res.QueryResponse?.Customer || []).map((c) => ({
+    id: String(c.Id),
+    displayName: c.DisplayName || c.CompanyName || `Customer #${c.Id}`,
+    companyName: c.CompanyName || c.DisplayName || '',
+    email: c.PrimaryEmailAddr?.Address || '',
+    phone: c.PrimaryPhone?.FreeFormNumber || '',
+    balance: Number(c.Balance || 0),
+    isSubCustomer: Boolean(c.Job || c.ParentRef?.value),
+    parentName: c.ParentRef?.name,
+  }));
+}
+
+export async function fetchQuickBooksInvoices(
+  existingTokens?: QuickBooksTokenData
+): Promise<QboHistoricalInvoiceRecord[]> {
+  const tokens = existingTokens || (await getValidTokens());
+  const q = 'SELECT * FROM Invoice ORDERBY TxnDate DESC MAXRESULTS 500';
+  const res = await qboApiRequest<{
+    QueryResponse?: {
+      Invoice?: Array<{
+        Id: string;
+        SyncToken?: string;
+        DocNumber?: string;
+        TxnDate?: string;
+        DueDate?: string;
+        TotalAmt?: number;
+        Balance?: number;
+        CustomerRef?: { value?: string; name?: string };
+        PrivateNote?: string;
+      }>;
+    };
+  }>(tokens, `/query?query=${encodeURIComponent(q)}`);
+
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  return (res.QueryResponse?.Invoice || []).map((inv) => {
+    const totalAmt = Number(inv.TotalAmt || 0);
+    const balance = Number(inv.Balance ?? totalAmt);
+    const dueDate = inv.DueDate || inv.TxnDate || todayStr;
+    let status: 'PAID' | 'PENDING' | 'OVERDUE' = 'PENDING';
+    if (balance <= 0.009 && totalAmt > 0) {
+      status = 'PAID';
+    } else if (dueDate < todayStr && balance > 0) {
+      status = 'OVERDUE';
+    }
+
+    return {
+      id: String(inv.Id),
+      syncToken: String(inv.SyncToken || '0'),
+      docNumber: inv.DocNumber || `QBO-${inv.Id}`,
+      txnDate: inv.TxnDate || todayStr,
+      dueDate,
+      totalAmt,
+      balance,
+      customerId: String(inv.CustomerRef?.value || ''),
+      customerName: inv.CustomerRef?.name || 'QuickBooks Customer',
+      privateNote: inv.PrivateNote || '',
+      status,
+    };
+  });
+}
+
+export async function fetchQuickBooksExpenses(
+  existingTokens?: QuickBooksTokenData
+): Promise<QboNormalizedExpenseRecord[]> {
+  const tokens = existingTokens || (await getValidTokens());
+
+  const [billsRes, purchasesRes] = await Promise.all([
+    qboApiRequest<{
+      QueryResponse?: {
+        Bill?: Array<{
+          Id: string;
+          TxnDate?: string;
+          TotalAmt?: number;
+          VendorRef?: { name?: string };
+          DepartmentRef?: { name?: string };
+          PrivateNote?: string;
+          Line?: Array<{
+            Id?: string;
+            Amount?: number;
+            Description?: string;
+            DetailType?: string;
+            AccountBasedExpenseLineDetail?: {
+              AccountRef?: { value?: string; name?: string };
+              ClassRef?: { name?: string };
+            };
+            ItemBasedExpenseLineDetail?: {
+              ItemRef?: { value?: string; name?: string };
+              ClassRef?: { name?: string };
+            };
+          }>;
+        }>;
+      };
+    }>(tokens, `/query?query=${encodeURIComponent('SELECT * FROM Bill ORDERBY TxnDate DESC MAXRESULTS 500')}`),
+    qboApiRequest<{
+      QueryResponse?: {
+        Purchase?: Array<{
+          Id: string;
+          TxnDate?: string;
+          TotalAmt?: number;
+          PaymentType?: string;
+          EntityRef?: { name?: string };
+          DepartmentRef?: { name?: string };
+          PrivateNote?: string;
+          Line?: Array<{
+            Id?: string;
+            Amount?: number;
+            Description?: string;
+            DetailType?: string;
+            AccountBasedExpenseLineDetail?: {
+              AccountRef?: { value?: string; name?: string };
+              ClassRef?: { name?: string };
+            };
+            ItemBasedExpenseLineDetail?: {
+              ItemRef?: { value?: string; name?: string };
+              ClassRef?: { name?: string };
+            };
+          }>;
+        }>;
+      };
+    }>(tokens, `/query?query=${encodeURIComponent('SELECT * FROM Purchase ORDERBY TxnDate DESC MAXRESULTS 500')}`),
+  ]);
+
+  const normalized: QboNormalizedExpenseRecord[] = [];
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  // 1. Normalize Vendor Bills
+  for (const bill of billsRes.QueryResponse?.Bill || []) {
+    const txnDate = bill.TxnDate || todayStr;
+    const fiscalYear = parseInt(txnDate.slice(0, 4), 10) || new Date().getFullYear();
+    const vendorName = bill.VendorRef?.name || 'QuickBooks Vendor';
+    const lines = bill.Line || [];
+
+    lines.forEach((line, idx) => {
+      const amt = Number(line.Amount || 0);
+      if (amt <= 0) return;
+      const acctDetail = line.AccountBasedExpenseLineDetail;
+      const itemDetail = line.ItemBasedExpenseLineDetail;
+      const accountName =
+        acctDetail?.AccountRef?.name || itemDetail?.ItemRef?.name || 'Uncategorized Expense';
+      const accountId = acctDetail?.AccountRef?.value || itemDetail?.ItemRef?.value || '';
+
+      normalized.push({
+        qboExpenseId: `BILL-${bill.Id}-L${line.Id || idx + 1}`,
+        sourceType: 'Bill',
+        vendorName,
+        accountId: String(accountId),
+        accountName,
+        className: acctDetail?.ClassRef?.name || itemDetail?.ClassRef?.name || null,
+        departmentName: bill.DepartmentRef?.name || null,
+        amount: Number(amt.toFixed(2)),
+        expenseDate: txnDate,
+        fiscalYear,
+        paymentMethod: 'Vendor Bill',
+        description: line.Description || bill.PrivateNote || `QBO Bill #${bill.Id}`,
+      });
+    });
+  }
+
+  // 2. Normalize Credit Card / Check / Cash / ACH Purchases
+  for (const purchase of purchasesRes.QueryResponse?.Purchase || []) {
+    const txnDate = purchase.TxnDate || todayStr;
+    const fiscalYear = parseInt(txnDate.slice(0, 4), 10) || new Date().getFullYear();
+    const vendorName = purchase.EntityRef?.name || 'QuickBooks Expense';
+    const lines = purchase.Line || [];
+
+    lines.forEach((line, idx) => {
+      const amt = Number(line.Amount || 0);
+      if (amt <= 0) return;
+      const acctDetail = line.AccountBasedExpenseLineDetail;
+      const itemDetail = line.ItemBasedExpenseLineDetail;
+      const accountName =
+        acctDetail?.AccountRef?.name || itemDetail?.ItemRef?.name || 'Uncategorized Expense';
+      const accountId = acctDetail?.AccountRef?.value || itemDetail?.ItemRef?.value || '';
+
+      normalized.push({
+        qboExpenseId: `PURCHASE-${purchase.Id}-L${line.Id || idx + 1}`,
+        sourceType: 'Purchase',
+        vendorName,
+        accountId: String(accountId),
+        accountName,
+        className: acctDetail?.ClassRef?.name || itemDetail?.ClassRef?.name || null,
+        departmentName: purchase.DepartmentRef?.name || null,
+        amount: Number(amt.toFixed(2)),
+        expenseDate: txnDate,
+        fiscalYear,
+        paymentMethod: purchase.PaymentType || 'Credit Card',
+        description: line.Description || purchase.PrivateNote || `QBO Purchase #${purchase.Id}`,
+      });
+    });
+  }
+
+  return normalized;
+}
+
+export async function fetchQuickBooksClassesAndLocations(
+  existingTokens?: QuickBooksTokenData
+): Promise<QboPropertyRefRecord[]> {
+  const tokens = existingTokens || (await getValidTokens());
+  const results: QboPropertyRefRecord[] = [];
+
+  // Classes & Locations may be disabled on some QBO companies; fail gracefully per entity
+  try {
+    const classRes = await qboApiRequest<{
+      QueryResponse?: { Class?: Array<{ Id: string; Name: string; FullyQualifiedName?: string }> };
+    }>(tokens, `/query?query=${encodeURIComponent('SELECT * FROM Class WHERE Active = true MAXRESULTS 200')}`);
+    for (const c of classRes.QueryResponse?.Class || []) {
+      results.push({
+        id: String(c.Id),
+        name: c.FullyQualifiedName || c.Name,
+        source: 'Class',
+      });
+    }
+  } catch {
+    // Classes feature disabled in QBO
+  }
+
+  try {
+    const deptRes = await qboApiRequest<{
+      QueryResponse?: { Department?: Array<{ Id: string; Name: string; FullyQualifiedName?: string }> };
+    }>(tokens, `/query?query=${encodeURIComponent('SELECT * FROM Department WHERE Active = true MAXRESULTS 200')}`);
+    for (const d of deptRes.QueryResponse?.Department || []) {
+      results.push({
+        id: String(d.Id),
+        name: d.FullyQualifiedName || d.Name,
+        source: 'Department',
+      });
+    }
+  } catch {
+    // Locations/Departments feature disabled in QBO
+  }
+
+  return results;
+}
+
 /**
  * Resilient fallback sample products/services for preview/offline mode
  */
