@@ -94,6 +94,7 @@ export const IntegrationTab: React.FC = () => {
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [realmId, setRealmId] = useState<string | null>(null);
   const [isEnvConfigured, setIsEnvConfigured] = useState<boolean>(false);
+  const [qbEnvironment, setQbEnvironment] = useState<string>('production');
   const [serviceConfig, setServiceConfig] = useState<Record<string, { qb_id: string; qb_name: string }>>({});
   const [isLoadingIntegration, setIsLoadingIntegration] = useState<boolean>(true);
 
@@ -101,6 +102,7 @@ export const IntegrationTab: React.FC = () => {
   const [groupedCategories, setGroupedCategories] = useState<GroupedCategory[]>([]);
   const [rawItems, setRawItems] = useState<QuickBooksItem[]>([]);
   const [totalItems, setTotalItems] = useState<number>(0);
+  const [catalogSource, setCatalogSource] = useState<'live' | 'sample'>('sample');
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
 
@@ -121,6 +123,7 @@ export const IntegrationTab: React.FC = () => {
         setIsConnected(Boolean(data.integration.is_connected));
         setRealmId(data.integration.realm_id || null);
         setIsEnvConfigured(Boolean(data.integration.is_env_configured));
+        setQbEnvironment(data.integration.environment || 'production');
         setServiceConfig(data.integration.service_config || {});
       }
     } catch (err) {
@@ -138,17 +141,29 @@ export const IntegrationTab: React.FC = () => {
       const data = await res.json();
 
       if (data.success) {
+        const source = data.source === 'live' ? 'live' : 'sample';
         setGroupedCategories(data.items || []);
         setRawItems(data.rawItems || []);
         setTotalItems(data.total || 0);
+        setCatalogSource(source);
 
         if (isManualSync) {
-          toastSuccess(
-            language === 'en'
-              ? `Synced ${data.total || 0} products & services from QuickBooks`
-              : `Sincronizados ${data.total || 0} productos y servicios desde QuickBooks`,
-            'QuickBooks Sync'
-          );
+          if (source === 'live') {
+            toastSuccess(
+              language === 'en'
+                ? `Synced ${data.total || 0} live products & services from QuickBooks`
+                : `Sincronizados ${data.total || 0} productos y servicios en vivo desde QuickBooks`,
+              'QuickBooks Sync'
+            );
+          } else {
+            toastInfo(
+              data.notice ||
+                (language === 'en'
+                  ? 'Showing local fallback catalog (QuickBooks not linked or unreachable).'
+                  : 'Mostrando catálogo local de respaldo (QuickBooks no vinculado o inaccesible).'),
+              'Catalog Fallback'
+            );
+          }
         }
       }
     } catch (err: any) {
@@ -166,8 +181,38 @@ export const IntegrationTab: React.FC = () => {
     }
   };
 
-  // Initial Load
+  // Initial Load & OAuth Callback Toast Feedback
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const qbConnected = params.get('qb_connected');
+      const qbError = params.get('qb_error');
+      const errorParam = params.get('error');
+
+      if (qbConnected === 'true') {
+        toastSuccess(
+          language === 'en'
+            ? 'QuickBooks Online account connected successfully.'
+            : 'Cuenta de QuickBooks Online conectada con éxito.',
+          'QuickBooks Linked'
+        );
+      } else if (qbError) {
+        toastError(qbError, 'QuickBooks OAuth Error');
+      } else if (errorParam === 'missing_qb_credentials') {
+        toastError(
+          language === 'en'
+            ? 'Missing QB_CLIENT_ID or QB_CLIENT_SECRET in environment variables.'
+            : 'Faltan QB_CLIENT_ID o QB_CLIENT_SECRET en las variables de entorno.',
+          'Configuration Missing'
+        );
+      }
+
+      if (qbConnected || qbError || errorParam) {
+        const cleanUrl = `${window.location.pathname}?view=settings&tab=integrations`;
+        window.history.replaceState({}, '', cleanUrl);
+      }
+    }
+
     fetchIntegrationSettings();
     fetchItems(false);
   }, []);
@@ -279,7 +324,12 @@ export const IntegrationTab: React.FC = () => {
           </div>
 
           {/* Connection Status Badge */}
-          <div>
+          <div className="flex items-center gap-2">
+            {qbEnvironment === 'sandbox' && (
+              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                Sandbox
+              </span>
+            )}
             {isConnected ? (
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
                 <Wifi size={13} />
@@ -451,6 +501,15 @@ export const IntegrationTab: React.FC = () => {
             </h3>
             <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#D4AF37]/15 text-[#F3D270] border border-[#D4AF37]/30">
               {totalItems} items
+            </span>
+            <span
+              className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
+                catalogSource === 'live'
+                  ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                  : 'bg-white/[0.06] text-white/50 border-white/[0.1]'
+              }`}
+            >
+              {catalogSource === 'live' ? 'Live QBO' : 'Sample'}
             </span>
           </div>
 

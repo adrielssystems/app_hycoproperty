@@ -21,6 +21,18 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  // Verify CSRF OAuth state parameter
+  if (storedState && state !== storedState) {
+    return NextResponse.redirect(
+      new URL(
+        `/?view=settings&tab=integrations&qb_error=${encodeURIComponent(
+          'Invalid OAuth state parameter. Please retry connecting.'
+        )}`,
+        request.url
+      )
+    );
+  }
+
   // Fallback redirectUri calculation if cookie is missing
   if (!redirectUri) {
     const forwardedProto = request.headers.get('x-forwarded-proto') || 'http';

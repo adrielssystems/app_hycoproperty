@@ -15,6 +15,8 @@ export async function GET() {
 
     const row = res.rows[0];
 
+    const qbEnvironment = (process.env.QB_ENVIRONMENT || 'production').toLowerCase().trim();
+
     return NextResponse.json({
       success: true,
       integration: {
@@ -22,6 +24,7 @@ export async function GET() {
         realm_id: row?.realm_id || null,
         service_config: row?.service_config || {},
         is_env_configured: isEnvironmentConfigured(),
+        environment: qbEnvironment,
         token_expires_at: row?.token_expires_at || null,
         updated_at: row?.updated_at || null,
       },
